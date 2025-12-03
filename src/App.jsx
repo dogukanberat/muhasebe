@@ -125,6 +125,7 @@ function App() {
   const [error, setError] = useState('');
   const [results, setResults] = useState(null);
   const [tableCurrency, setTableCurrency] = useState('TRY');
+  const [manualRate, setManualRate] = useState(''); // Manuel kur girişi
 
   // Sabit muhasebe ücreti
   const MUHASEBE_AYLIK = 54; // EUR
@@ -133,6 +134,9 @@ function App() {
 
   // KDV oranı
   const KDV_RATE = 0.20; // %20
+
+  // Backend API URL
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   // Döviz kuru çekme - Sayfa yüklendiğinde
   useEffect(() => {
@@ -217,83 +221,33 @@ function App() {
     return null;
   };
 
-  // Ocak'tan bugüne kadar her ayın 20'si kurunu çek (TCMB)
+  // Backend API'den aylık kurları çek
   const fetchMonthlyRates = async () => {
     try {
-      const rates = [];
-      const today = new Date();
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth(); // 0-11 (Ocak=0, Aralık=11)
-      const currentDay = today.getDate();
+      console.log('Backend API\'den kurlar çekiliyor...');
 
-      // Ocak'tan (0) bugünkü aya kadar
-      for (let monthIndex = 0; monthIndex <= currentMonth; monthIndex++) {
-        let date;
-        const isCurrentMonth = monthIndex === currentMonth;
+      const response = await fetch(`${API_URL}/api/rates`);
 
-        if (isCurrentMonth) {
-          // Bugünkü ay - 20'sine geldiyse 20'sini kullan, değilse bugünü kullan
-          if (currentDay >= 20) {
-            date = new Date(currentYear, monthIndex, 20);
-          } else {
-            date = today;
-          }
-        } else {
-          // Geçmiş aylar - ayın 20'si
-          date = new Date(currentYear, monthIndex, 20);
-        }
-
-        const monthName = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-                         'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'][monthIndex];
-
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const dateStr = `${year}-${month}-${day}`;
-
-        try {
-          // TCMB'den kur çek
-          const tcmbResult = await fetchTCMBRate(date);
-          const rate = tcmbResult?.rate;
-
-          // TCMB başarısız olursa statik kurları kullan
-          const fallbackRate = STATIC_MONTH_RATES[monthIndex]?.rate || null;
-          const finalRate = rate ?? fallbackRate;
-
-          rates.push({
-            month: monthName,
-            date: dateStr,
-            rate: finalRate,
-            isCurrent: isCurrentMonth,
-            source: rate ? 'TCMB' : 'Static',
-            tcmbDate: tcmbResult?.tarih || ''
-          });
-
-          if (!rate && fallbackRate) {
-            console.log(`${monthName}: TCMB başarısız, statik kur kullanıldı: ${fallbackRate}`);
-          }
-        } catch (err) {
-          console.error(`${dateStr} kuru alınamadı:`, err);
-          // Hata durumunda statik kur kullan
-          const fallbackRate = STATIC_MONTH_RATES[monthIndex]?.rate || null;
-          rates.push({
-            month: monthName,
-            date: dateStr,
-            rate: fallbackRate,
-            isCurrent: isCurrentMonth,
-            source: 'Static'
-          });
-        }
-
-        // API rate limit için kısa bekleme
-        await new Promise(resolve => setTimeout(resolve, 100));
+      if (!response.ok) {
+        throw new Error(`API hatası: ${response.status}`);
       }
 
-      setMonthlyRates(rates);
-      console.log('Aylık kurlar yüklendi:', rates);
+      const data = await response.json();
+
+      if (data.success && data.rates) {
+        setMonthlyRates(data.rates);
+        console.log('Aylık kurlar yüklendi (Backend):', data.rates);
+        console.log('Cache bilgisi:', data.cachedAt ? `Son güncelleme: ${new Date(data.cachedAt).toLocaleString('tr-TR')}` : 'Yeni cache');
+      } else {
+        throw new Error('API yanıtı başarısız');
+      }
     } catch (err) {
-      console.error('Aylık kurlar alınamadı:', err);
-      // Tam başarısızlık durumunda statik kurları kullan
+      console.error('Backend API hatası:', err);
+      // Fallback: Statik kurları kullan
+      const today = new Date();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+
       const staticRates = STATIC_MONTH_RATES.slice(0, currentMonth + 1).map((item, index) => ({
         ...item,
         date: `${currentYear}-${String(index + 1).padStart(2, '0')}-20`,
@@ -301,56 +255,42 @@ function App() {
         source: 'Static'
       }));
       setMonthlyRates(staticRates);
+      console.warn('Backend erişilemedi, statik kurlar kullanılıyor');
     }
   };
 
-  // TCMB'den güncel döviz kuru çek
+  // Backend API'den güncel döviz kuru çek
   const fetchExchangeRate = async () => {
     try {
       setLoading(true);
       setError('');
 
-      const today = new Date();
-      const currentMonth = today.getMonth();
+      console.log('Güncel kur çekiliyor (Backend API)...');
 
-      console.log('Kur çekiliyor, tarih:', today);
-      const tcmbResult = await fetchTCMBRate(today);
-      const rate = tcmbResult?.rate;
+      const response = await fetch(`${API_URL}/api/rate/today`);
 
-      // TCMB başarısız olursa statik kurları kullan
-      const fallbackRate = STATIC_MONTH_RATES[currentMonth]?.rate || 49.62;
-      const finalRate = rate ?? fallbackRate;
+      if (!response.ok) {
+        throw new Error('Backend API hatası');
+      }
 
-      console.log('TCMB sonucu:', rate, 'Fallback:', fallbackRate, 'Kullanılan:', finalRate);
+      const data = await response.json();
 
-      setExchangeRate(finalRate);
-
-      // Tarih formatla
-      const formattedDate = (tcmbResult?.tarih)
-        ? tcmbResult.tarih
-        : today.toLocaleDateString('tr-TR', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-
-      const source = rate ? '(TCMB - tcmb.gov.tr XML)' : '(Statik Kur)';
-      setRateDate(`${formattedDate} ${source}`);
-
-      if (!rate) {
-        console.warn('TCMB API başarısız, statik kur kullanıldı:', fallbackRate);
+      if (data.success && data.rate) {
+        setExchangeRate(data.rate);
+        setRateDate(`${data.tarih} (TCMB - Backend Cache)`);
+        console.log('Güncel kur:', data.rate);
+      } else {
+        throw new Error('Kur alınamadı');
       }
 
     } catch (err) {
       console.error('Kur hatası:', err);
-      // Hata durumunda da statik kur kullan
+      // Hata durumunda statik kur kullan
       const currentMonth = new Date().getMonth();
       const fallbackRate = STATIC_MONTH_RATES[currentMonth]?.rate || 49.62;
       setExchangeRate(fallbackRate);
-      setRateDate('Statik Kur Kullanılıyor');
-      setError('');
+      setRateDate('Statik Kur (Backend Erişilemedi)');
+      console.warn('Backend erişilemedi, statik kur:', fallbackRate);
     } finally {
       setLoading(false);
     }
@@ -379,10 +319,30 @@ function App() {
       ? netInput
       : (exchangeRate ? netInput / (exchangeRate || 1) : 0);
     const computeBagkur = (netTry) => Math.min(netTry * BAGKUR_RATE, BAGKUR_CAP_TRY);
-    const currentRate = monthlyRates[monthlyRates.length - 1]?.rate || exchangeRate || 1;
-    const ratesForCalc = monthlyRates.length === 12
+
+    // Manuel kur varsa onu kullan, yoksa backend'den gelen kuru kullan
+    const effectiveRate = manualRate ? parseFloat(manualRate) : exchangeRate;
+
+    // ratesForCalc array'ini oluştur ve manuel kur varsa güncel ayı güncelle
+    let ratesForCalc = monthlyRates.length === 12
       ? monthlyRates
       : STATIC_MONTH_RATES;
+
+    // Eğer manuel kur girilmişse, güncel ayın kurunu override et
+    if (manualRate) {
+      const parsedManualRate = parseFloat(manualRate);
+      if (Number.isFinite(parsedManualRate) && parsedManualRate > 0) {
+        ratesForCalc = ratesForCalc.map(monthData => {
+          if (monthData.isCurrent) {
+            return { ...monthData, rate: parsedManualRate };
+          }
+          return monthData;
+        });
+      }
+    }
+
+    // Güncel ayın kurunu güncellenmiş ratesForCalc'tan al
+    const currentRate = ratesForCalc[ratesForCalc.length - 1]?.rate || effectiveRate || 1;
 
     // Özet kartı için güncel ay değerleri
     const monthlyNetTryForSummary = incomeCurrency === 'EUR' ? netInput * currentRate : netInput;
@@ -483,6 +443,8 @@ function App() {
       monthlyRows.push({
         month: monthData.month,
         rate: monthRate,
+        source: monthData.source || 'Unknown',
+        isCurrent: monthData.isCurrent || false,
         netTry: netAchievedTry,
         netEur: netAchievedTry / monthRate,
         bagkurTry,
@@ -566,45 +528,25 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white p-4 md:p-8">
       {/* Ana Container */}
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
         <header className="text-center mb-8 md:mb-12">
-          <h1 className="text-4xl md:text-6xl font-bold mb-3 bg-gradient-to-r from-neon-cyan via-neon-purple to-neon-pink bg-clip-text text-transparent">
-            Gelir Vergisi & Muhasebe Hesaplayıcı
+          <h1 className="text-4xl md:text-6xl font-bold mb-3 bg-gradient-to-r from-blue-400 via-blue-600 to-blue-800 bg-clip-text text-transparent">
+            2025 Gelir Vergisi & Muhasebe Hesaplayıcı
           </h1>
           <p className="text-lg md:text-xl text-gray-300">
-            EUR net → TRY ve 2025 Ücret Dışı Gelir Vergisi Tarifesi
+            EUR net → TRY ve Ücret Dışı Gelir Vergisi Tarifesi
           </p>
         </header>
-
-        {/* Döviz Kuru Bilgisi */}
-        {exchangeRate && (
-          <div className="glass rounded-2xl p-4 mb-6 text-center neon-glow-cyan">
-            <p className="text-sm text-gray-300">Güncel Kur:</p>
-            <p className="text-2xl font-bold text-neon-cyan">
-              1 EUR = {formatNumber(exchangeRate)} TL
-            </p>
-            {rateDate && (
-              <p className="text-xs text-gray-400 mt-1">{rateDate}</p>
-            )}
-            <button
-              onClick={fetchExchangeRate}
-              disabled={loading}
-              className="mt-2 text-xs text-neon-cyan hover:text-white transition-colors"
-            >
-              {loading ? 'Yenileniyor...' : '🔄 Kuru Yenile'}
-            </button>
-          </div>
-        )}
 
         {/* Input Card */}
         <div className="glass rounded-3xl p-6 md:p-8 mb-8 neon-glow-purple">
           <h2 className="text-2xl font-bold mb-6 text-neon-purple">Gelir Bilgileri</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="mb-6">
             {/* Aylık Net Gelir (EUR) */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -645,28 +587,15 @@ function App() {
                 className="w-full px-4 py-3 bg-slate-800/50 border border-neon-purple/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-purple transition-all"
               />
             </div>
-
-            {/* Yıl */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Vergi Yılı
-              </label>
-              <input
-                type="text"
-                value="2025"
-                readOnly
-                className="w-full px-4 py-3 bg-slate-800/30 border border-gray-600/30 rounded-xl text-gray-400 cursor-not-allowed"
-              />
-            </div>
           </div>
 
           {/* Hesapla Butonu */}
           <button
             onClick={handleCalculate}
             disabled={loading || !exchangeRate}
-            className="w-full bg-gradient-to-r from-neon-purple to-neon-pink py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed animate-pulse-glow"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-blue-900"
           >
-            {loading ? 'Yükleniyor...' : '⚡ Hesapla'}
+            {loading ? 'Yükleniyor...' : '📊 Hesapla'}
           </button>
 
           {/* Hata Mesajı */}
@@ -680,164 +609,118 @@ function App() {
         {/* Sonuçlar */}
         {results && (
           <div className="space-y-8">
-            {/* 3 Ana Kart */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Özet Kartı */}
+            {(() => {
+              const currentDay = new Date().getDate();
+              const isAfter20th = currentDay >= 20;
+              // Eğer 20'si gelmemişse bir önceki ay, gelmişse güncel ay
+              const monthIndexToShow = isAfter20th
+                ? results.monthlyRows.length - 1
+                : Math.max(0, results.monthlyRows.length - 2);
+              const monthDataToShow = results.monthlyRows[monthIndexToShow] || results.monthlyRows[results.monthlyRows.length - 1];
 
-              {/* 1. Özet Kartı */}
-              <div className="glass rounded-3xl p-6 neon-glow-cyan">
-                <h3 className="text-xl font-bold mb-4 text-neon-cyan flex items-center gap-2">
-                  <span>📊</span> Özet
-                </h3>
+              return (
+                <div className="glass rounded-3xl p-6 neon-glow-cyan">
+                  <h3 className="text-xl font-bold mb-6 text-neon-cyan flex items-center gap-2">
+                    <span>📊</span> Aylık Özet - {monthDataToShow.month} 2025
+                  </h3>
 
-                <div className="space-y-3">
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-gray-400">Aylık Net (EUR)</p>
-                    <p className="text-xl font-bold text-white">
-                      {formatCurrency(results.monthlyNetEur, 'EUR')}
-                    </p>
-                  </div>
-
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-gray-400">Aylık Net (TL)</p>
-                    <p className="text-xl font-bold text-white">
-                      {formatCurrency(results.monthlyNetTry, 'TRY')}
-                    </p>
-                  </div>
-
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-gray-400">Yıllık Net (EUR)</p>
-                    <p className="text-xl font-bold text-neon-cyan">
-                      {formatCurrency(results.yearlyNetEur, 'EUR')}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-400">Yıllık Net (TL)</p>
-                    <p className="text-xl font-bold text-neon-cyan">
-                      {formatCurrency(results.yearlyNetTry, 'TRY')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Vergi & Bağkur Detayı Kartı */}
-              <div className="glass rounded-3xl p-6 neon-glow-purple">
-                <h3 className="text-xl font-bold mb-4 text-neon-purple flex items-center gap-2">
-                  <span>💰</span> Vergi & Bağkur Detayı
-                </h3>
-
-                <div className="space-y-3">
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-gray-400">Yıllık Vergi Matrahı (Fatura - gider)</p>
-                    <p className="text-xl font-bold text-white">
-                      {formatCurrency(results.taxBase, 'TRY')}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Matrah: fatura KDV hariç - muhasebe (SGK düşülmez)
-                    </p>
-                  </div>
-
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-gray-400">Gelir Vergisi (TL)</p>
-                    <p className="text-xl font-bold text-red-400">
-                      {formatCurrency(results.yearlyTax, 'TRY')}
-                    </p>
-                  </div>
-
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-gray-400">Gelir Vergisi (EUR)</p>
-                    <p className="text-xl font-bold text-red-400">
-                      {formatCurrency(results.yearlyTaxEur, 'EUR')}
-                    </p>
-                  </div>
-
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-orange-400">Bağkur Primi (TL)</p>
-                    <p className="text-xl font-bold text-orange-400">
-                      {formatCurrency(results.yearlyBagkur, 'TRY')}
-                    </p>
-                    <p className="text-[11px] text-gray-500 mt-1">
-                      Oran %37,75 · Aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-orange-400">Bağkur Primi (EUR)</p>
-                    <p className="text-xl font-bold text-orange-400">
-                      {formatCurrency(results.yearlyBagkurEur, 'EUR')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Mini Vergi Oranı Göstergesi */}
-                <div className="mt-4 p-3 bg-slate-800/50 rounded-xl">
-                  <p className="text-xs text-gray-400 mb-2">Efektif Vergi Oranı:</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-yellow-500 to-red-500"
-                        style={{ width: `${Math.min((results.yearlyTax / results.taxBase) * 100, 100)}%` }}
-                      ></div>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    {/* Net Gelir */}
+                    <div className="glass p-4 rounded-xl text-center min-w-[120px]">
+                      <p className="text-xs text-gray-400 mb-1">Net Gelir</p>
+                      <p className="text-lg font-bold text-white">
+                        {formatCurrency(monthDataToShow.netEur, 'EUR')}
+                      </p>
                     </div>
-                    <span className="text-sm font-bold text-neon-purple">
-                      {formatNumber((results.yearlyTax / results.taxBase) * 100)}%
-                    </span>
+
+                    <div className="text-2xl font-bold text-gray-400">+</div>
+
+                    {/* SGK Primi */}
+                    <div className="glass p-4 rounded-xl text-center min-w-[120px]">
+                      <p className="text-xs text-orange-400 mb-1">SGK Primi</p>
+                      <p className="text-lg font-bold text-orange-400">
+                        {formatCurrency(monthDataToShow.bagkurEur, 'EUR')}
+                      </p>
+                    </div>
+
+                    <div className="text-2xl font-bold text-gray-400">+</div>
+
+                    {/* Gelir Vergisi */}
+                    <div className="relative group">
+                      <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
+                        <p className="text-xs text-red-400 mb-1">Gelir Vergisi</p>
+                        <p className="text-lg font-bold text-red-400">
+                          {formatCurrency(monthDataToShow.taxEur || 0, 'EUR')}
+                        </p>
+                      </div>
+
+                      {/* Tooltip */}
+                      <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-red-400/30">
+                        <div className="font-bold text-red-400 mb-2">📊 Gelir Vergisi Hesaplaması</div>
+                        <p className="mb-3 text-gray-300">Kümülatif matrah (fatura KDV hariç - muhasebe) üzerinden <span className="font-semibold text-white">2025 Ücret Dışı Gelirler Tarifesi</span> ile hesaplanır.</p>
+                        <div className="text-[11px] space-y-1.5 bg-slate-700/50 p-2 rounded">
+                          <div className="flex justify-between">
+                            <span>• 0 - 158.000 TL</span>
+                            <span className="font-semibold text-yellow-300">%15</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>• 158.001 - 330.000 TL</span>
+                            <span className="font-semibold text-yellow-300">%20</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>• 330.001 - 800.000 TL</span>
+                            <span className="font-semibold text-orange-300">%27</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>• 800.001 - 4.300.000 TL</span>
+                            <span className="font-semibold text-orange-400">%35</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>• 4.300.000+ TL</span>
+                            <span className="font-semibold text-red-400">%40</span>
+                          </div>
+                        </div>
+                        {/* Arrow */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
+                      </div>
+                    </div>
+
+                    <div className="text-2xl font-bold text-gray-400">+</div>
+
+                    {/* Muhasebe */}
+                    <div className="glass p-4 rounded-xl text-center min-w-[120px]">
+                      <p className="text-xs text-blue-400 mb-1">Muhasebe</p>
+                      <p className="text-lg font-bold text-blue-400">
+                        {formatCurrency(monthDataToShow.muhasebeEur, 'EUR')}
+                      </p>
+                    </div>
+
+                    <div className="text-2xl font-bold text-neon-cyan">=</div>
+
+                    {/* KDV Hariç Tutar */}
+                    <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-neon-cyan/30">
+                      <p className="text-xs text-green-400 mb-1">KDV Hariç Tutar</p>
+                      <p className="text-lg font-bold text-neon-cyan">
+                        {formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}
+                      </p>
+                    </div>
+
+                    <div className="text-lg font-bold text-gray-400">× 1.2</div>
+
+                    <div className="text-2xl font-bold text-green-400">=</div>
+
+                    {/* KDV Dahil Tutar */}
+                    <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-green-500/30">
+                      <p className="text-xs text-green-400 mb-1">KDV Dahil Tutar</p>
+                      <p className="text-lg font-bold text-green-400">
+                        {formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}
+                      </p>
+                    </div>
                   </div>
                 </div>
-
-                {/* Bağkur Bilgilendirme */}
-                <div className="mt-2 p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl">
-                  <p className="text-xs text-orange-300">
-                    ℹ️ Bağkur primi %37,75 oranı ve aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)} kullanılmıştır.
-                  </p>
-                </div>
-              </div>
-
-              {/* 3. Euro & Muhasebe Kartı */}
-              <div className="glass rounded-3xl p-6 neon-glow-pink">
-                <h3 className="text-xl font-bold mb-4 text-neon-pink flex items-center gap-2">
-                  <span>🧾</span> Euro & Muhasebe
-                </h3>
-
-                <div className="space-y-3">
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-gray-400">Yıllık Net (EUR)</p>
-                    <p className="text-xl font-bold text-white">
-                      {formatCurrency(results.yearlyNetEur, 'EUR')}
-                    </p>
-                  </div>
-
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-green-400">+ Muhasebe Ücreti (Aylık)</p>
-                    <p className="text-lg font-semibold text-green-300">
-                      +{formatCurrency(MUHASEBE_AYLIK, 'EUR')}
-                    </p>
-                  </div>
-
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-green-400">+ Muhasebe Ücreti (Yıllık)</p>
-                    <p className="text-lg font-semibold text-green-300">
-                      +{formatCurrency(MUHASEBE_AYLIK * results.monthCount, 'EUR')}
-                    </p>
-                  </div>
-
-                  <div className="pt-2">
-                    <p className="text-sm text-gray-400 mb-1">TOPLAM (Net + Muhasebe)</p>
-                    <p className="text-3xl font-bold text-neon-pink">
-                      {formatCurrency(results.totalWithAccounting, 'EUR')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Muhasebe Bilgi Notu */}
-                <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-xl">
-                  <p className="text-xs text-green-300">
-                    ℹ️ Muhasebe ücreti sabit olarak {formatCurrency(MUHASEBE_AYLIK, 'EUR')}/ay kabul edilmiştir.
-                  </p>
-                </div>
-              </div>
-
-            </div>
+              );
+            })()}
 
             {/* Aylık Detay Tablosu */}
             <div className="glass rounded-3xl p-6 md:p-8 neon-glow-cyan">
@@ -894,7 +777,31 @@ function App() {
                         className="border-b border-gray-800 hover:bg-slate-800/30 transition-colors"
                       >
                         <td className="py-2 px-2 font-medium text-neon-cyan">{row.month}</td>
-                        <td className="py-2 px-2 text-cyan-300 text-xs">{row.rate ? formatNumber(row.rate, 4) : '-'}</td>
+                        <td className="py-2 px-2 text-cyan-300 text-xs">
+                          {row.isCurrent && new Date().getDate() < 20 ? (
+                            <input
+                              type="number"
+                              value={manualRate || (row.rate ? row.rate : '')}
+                              onChange={(e) => setManualRate(e.target.value)}
+                              onBlur={() => {
+                                if (results && monthlyNetEur) {
+                                  handleCalculate();
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur();
+                                }
+                              }}
+                              placeholder="Kur giriniz"
+                              min="0"
+                              step="0.0001"
+                              className="w-24 px-2 py-1 bg-slate-800/50 border border-neon-cyan/30 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-neon-cyan"
+                            />
+                          ) : (
+                            row.rate ? formatNumber(row.rate, 4) : '-'
+                          )}
+                        </td>
                         <td className="py-2 px-2 text-xs text-gray-300">
                           <span className="block font-semibold text-white">{`${row.bracket.name} (%${row.bracket.rate})`}</span>
                           <span className="text-[10px] text-gray-500">{row.bracket.range}</span>
@@ -941,7 +848,7 @@ function App() {
                   Örnek: Mart ayı = (Ocak net + Bağkur + Muhasebe) + (Şubat net + Bağkur + Muhasebe) + (Mart net + Bağkur + Muhasebe)
                 </p>
                 <p className="text-xs text-cyan-300 mt-2">
-                  🌍 <strong>Kur:</strong> Her ayın 20'si kuru kullanılır. Bulunduğumuz ay 20'sine gelmediyse güncel kur kullanılır.
+                  🌍 <strong>Kur:</strong> Her ayın 20'si kuru kullanılır. Bulunduğumuz ay 20'sine gelmediyse manuel kur girişi yapabilirsiniz.
                 </p>
                 <p className="text-xs text-orange-300 mt-2">
                   ⚠️ <strong>Önemli:</strong> Gelir vergisi, fatura KDV hariç tutardan sadece muhasebe giderleri düşülerek oluşan kümülatif matrah üzerinden hesaplanır. SGK primi vergi matrahından düşülmez.

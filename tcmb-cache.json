@@ -1,0 +1,83 @@
+{
+  "version": "v1",
+  "rates": {
+    "2025-01": {
+      "rate": 36.7007,
+      "date": "2025-01-20",
+      "month": "Ocak",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:45.401Z"
+    },
+    "2025-02": {
+      "rate": 37.89,
+      "date": "2025-02-20",
+      "month": "Şubat",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:45.672Z"
+    },
+    "2025-03": {
+      "rate": 41.2657,
+      "date": "2025-03-20",
+      "month": "Mart",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:45.898Z"
+    },
+    "2025-04": {
+      "rate": 43.2922,
+      "date": "2025-04-18",
+      "month": "Nisan",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:46.139Z"
+    },
+    "2025-05": {
+      "rate": 43.7208,
+      "date": "2025-05-20",
+      "month": "Mayıs",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:46.372Z"
+    },
+    "2025-06": {
+      "rate": 45.6369,
+      "date": "2025-06-20",
+      "month": "Haziran",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:46.596Z"
+    },
+    "2025-07": {
+      "rate": 46.8842,
+      "date": "2025-07-18",
+      "month": "Temmuz",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:46.900Z"
+    },
+    "2025-08": {
+      "rate": 47.6314,
+      "date": "2025-08-20",
+      "month": "Ağustos",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:47.130Z"
+    },
+    "2025-09": {
+      "rate": 48.5762,
+      "date": "2025-09-19",
+      "month": "Eylül",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:47.524Z"
+    },
+    "2025-10": {
+      "rate": 48.9135,
+      "date": "2025-10-20",
+      "month": "Ekim",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:47.754Z"
+    },
+    "2025-11": {
+      "rate": 48.8116,
+      "date": "2025-11-20",
+      "month": "Kasım",
+      "source": "TCMB",
+      "fetchedAt": "2025-12-03T22:47:47.980Z"
+    }
+  },
+  "lastUpdated": "2025-12-03T22:47:48.407Z"
+}

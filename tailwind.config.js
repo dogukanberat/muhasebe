@@ -7,9 +7,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        'neon-cyan': '#00ffff',
-        'neon-purple': '#b026ff',
-        'neon-pink': '#ff006e',
+        'neon-cyan': '#3B82F6',      // Kurumsal mavi
+        'neon-purple': '#1E40AF',    // Koyu mavi
+        'neon-pink': '#059669',      // Kurumsal yeşil
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

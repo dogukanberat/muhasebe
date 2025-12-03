@@ -20,26 +20,26 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Neon glow efektleri */
+/* Kurumsal glow efektleri */
 .neon-glow-cyan {
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
 }
 
 .neon-glow-purple {
-  box-shadow: 0 0 20px rgba(176, 38, 255, 0.3);
+  box-shadow: 0 0 15px rgba(30, 64, 175, 0.15);
 }
 
 .neon-glow-pink {
-  box-shadow: 0 0 20px rgba(255, 0, 110, 0.3);
+  box-shadow: 0 0 15px rgba(5, 150, 105, 0.15);
 }
 
 /* Animasyonlar */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
   }
   50% {
-    box-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
   }
 }
 
