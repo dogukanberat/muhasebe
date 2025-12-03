@@ -127,21 +127,12 @@ function App() {
   const [tableCurrency, setTableCurrency] = useState('TRY');
 
   // Sabit muhasebe ücreti
-  const MUHASEBE_AYLIK = 45; // EUR
-  const BAGKUR_RATE = 0.3773; // %37,73
+  const MUHASEBE_AYLIK = 54; // EUR
+  const BAGKUR_RATE = 0.3775; // %37,75
   const BAGKUR_CAP_TRY = 68264.49; // Aylık tavan
-  const DECLARATION_STAMP = {
-    kdvMonthlyTry: 150,          // KDV Beyannamesi (aylık damga) - TRY
-    geciciQuarterlyTry: 150,     // Gelir Geçici Beyannamesi (3 ayda bir) - TRY
-    muhtasarQuarterlyTry: 150,   // Muhtasar Beyannamesi (3 ayda bir) - TRY
-    yearlyIncomeTry: 150,        // Yıllık Gelir Vergisi Beyannamesi (yılda 1) - TRY
-  };
 
   // KDV oranı
   const KDV_RATE = 0.20; // %20
-
-  // Damga Vergisi oranı
-  const DAMGA_RATE = 0.00759; // %0.759
 
   // Döviz kuru çekme - Sayfa yüklendiğinde
   useEffect(() => {
@@ -149,68 +140,148 @@ function App() {
     fetchMonthlyRates();
   }, []);
 
-  // Ocak'tan bugüne kadar her ayın son günü kurunu çek
+  // TCMB XML'den EUR kuru çekme (doğrudan TCMB, dev ortamında Vite proxy yolu)
+  const fetchTCMBRate = async (date) => {
+    const parseXml = (xmlText) => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      const parseError = xmlDoc.getElementsByTagName('parsererror');
+      if (parseError.length > 0) {
+        console.error('XML parse hatası:', parseError[0].textContent);
+        return null;
+      }
+
+      // Alış kurunu tercih et; yoksa satış kuruna düş.
+      const eurBuying = xmlDoc.querySelector('Currency[CurrencyCode="EUR"] > ForexBuying');
+      const eurSelling = xmlDoc.querySelector('Currency[CurrencyCode="EUR"] > ForexSelling');
+      const eurNode = eurBuying?.textContent ? eurBuying : eurSelling;
+      if (!eurNode || !eurNode.textContent) return null;
+
+      const tarihAttr = xmlDoc.documentElement.getAttribute('Tarih') || '';
+      const dateAttr = xmlDoc.documentElement.getAttribute('Date') || '';
+
+      return {
+        rate: parseFloat(eurNode.textContent),
+        tarih: tarihAttr || dateAttr || ''
+      };
+    };
+
+    const tcmbBase = import.meta.env.DEV ? '/tcmb/kurlar' : 'https://www.tcmb.gov.tr/kurlar';
+    const tcmbRoot = import.meta.env.DEV ? '/tcmb' : 'https://www.tcmb.gov.tr';
+
+    const buildTCMBUrl = (d) => {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      // Örn: https://www.tcmb.gov.tr/kurlar/202511/20112025.xml?_=TIMESTAMP
+      return `${tcmbBase}/${year}${month}/${day}${month}${year}.xml?_=${Date.now()}`;
+    };
+
+    const dateUrl = buildTCMBUrl(date);
+    const todayUrl = `${tcmbRoot}/kurlar/today.xml?_=${Date.now()}`;
+    const isTodayRequest = (() => {
+      const now = new Date();
+      return now.getFullYear() === date.getFullYear()
+        && now.getMonth() === date.getMonth()
+        && now.getDate() === date.getDate();
+    })();
+    const tcmbTargets = isTodayRequest ? [dateUrl, todayUrl] : [dateUrl];
+
+    for (const targetUrl of tcmbTargets) {
+      try {
+        const response = await fetch(targetUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': '*/*',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (!response.ok) {
+          console.warn('TCMB yanıtı başarısız:', response.status, response.statusText, targetUrl);
+          continue;
+        }
+
+        const xmlText = await response.text();
+        const parsed = parseXml(xmlText);
+        if (parsed?.rate) {
+          console.log('TCMB EUR kuru bulundu:', parsed.rate, 'Kaynak:', targetUrl);
+          return { ...parsed, source: 'TCMB', url: targetUrl };
+        }
+      } catch (err) {
+        console.error('TCMB kur çekme hatası:', err.message, targetUrl);
+      }
+    }
+
+    console.warn('TCMB EUR kuru alınamadı');
+    return null;
+  };
+
+  // Ocak'tan bugüne kadar her ayın 20'si kurunu çek (TCMB)
   const fetchMonthlyRates = async () => {
     try {
       const rates = [];
       const today = new Date();
       const currentYear = today.getFullYear();
       const currentMonth = today.getMonth(); // 0-11 (Ocak=0, Aralık=11)
+      const currentDay = today.getDate();
 
       // Ocak'tan (0) bugünkü aya kadar
       for (let monthIndex = 0; monthIndex <= currentMonth; monthIndex++) {
-        let dateStr;
         let date;
         const isCurrentMonth = monthIndex === currentMonth;
 
         if (isCurrentMonth) {
-          // Bugünkü ay - güncel tarih kullan
-          date = today;
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          dateStr = `${year}-${month}-${day}`;
+          // Bugünkü ay - 20'sine geldiyse 20'sini kullan, değilse bugünü kullan
+          if (currentDay >= 20) {
+            date = new Date(currentYear, monthIndex, 20);
+          } else {
+            date = today;
+          }
         } else {
-          // Geçmiş aylar - ayın son günü
-          date = new Date(currentYear, monthIndex + 1, 0); // Ayın son günü
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          dateStr = `${year}-${month}-${day}`;
+          // Geçmiş aylar - ayın 20'si
+          date = new Date(currentYear, monthIndex, 20);
         }
 
         const monthName = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
                          'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'][monthIndex];
 
-        try {
-          // frankfurter.app - ücretsiz ECB kurları (geçmiş tarih desteği var)
-          const response = await fetch(`https://api.frankfurter.app/${dateStr}?from=EUR&to=TRY`);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const dateStr = `${year}-${month}-${day}`;
 
-          if (response.ok) {
-            const data = await response.json();
-            rates.push({
-              month: monthName,
-              date: dateStr,
-              rate: data.rates.TRY || null,
-              isCurrent: isCurrentMonth // Bugünkü ay işareti
-            });
-          } else {
-            // API hatası olursa null kur ekle
-            rates.push({
-              month: monthName,
-              date: dateStr,
-              rate: null,
-              isCurrent: isCurrentMonth
-            });
-          }
-        } catch (err) {
-          console.error(`${dateStr} kuru alınamadı:`, err);
-          // Hata durumunda null kur ekle
+        try {
+          // TCMB'den kur çek
+          const tcmbResult = await fetchTCMBRate(date);
+          const rate = tcmbResult?.rate;
+
+          // TCMB başarısız olursa statik kurları kullan
+          const fallbackRate = STATIC_MONTH_RATES[monthIndex]?.rate || null;
+          const finalRate = rate ?? fallbackRate;
+
           rates.push({
             month: monthName,
             date: dateStr,
-            rate: null,
-            isCurrent: isCurrentMonth
+            rate: finalRate,
+            isCurrent: isCurrentMonth,
+            source: rate ? 'TCMB' : 'Static',
+            tcmbDate: tcmbResult?.tarih || ''
+          });
+
+          if (!rate && fallbackRate) {
+            console.log(`${monthName}: TCMB başarısız, statik kur kullanıldı: ${fallbackRate}`);
+          }
+        } catch (err) {
+          console.error(`${dateStr} kuru alınamadı:`, err);
+          // Hata durumunda statik kur kullan
+          const fallbackRate = STATIC_MONTH_RATES[monthIndex]?.rate || null;
+          rates.push({
+            month: monthName,
+            date: dateStr,
+            rate: fallbackRate,
+            isCurrent: isCurrentMonth,
+            source: 'Static'
           });
         }
 
@@ -219,43 +290,67 @@ function App() {
       }
 
       setMonthlyRates(rates);
+      console.log('Aylık kurlar yüklendi:', rates);
     } catch (err) {
       console.error('Aylık kurlar alınamadı:', err);
+      // Tam başarısızlık durumunda statik kurları kullan
+      const staticRates = STATIC_MONTH_RATES.slice(0, currentMonth + 1).map((item, index) => ({
+        ...item,
+        date: `${currentYear}-${String(index + 1).padStart(2, '0')}-20`,
+        isCurrent: index === currentMonth,
+        source: 'Static'
+      }));
+      setMonthlyRates(staticRates);
     }
   };
 
-  // Döviz kuru API (exchangerate-api.com - ücretsiz)
+  // TCMB'den güncel döviz kuru çek
   const fetchExchangeRate = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // exchangerate-api.com kullanıyoruz (ücretsiz, günlük 1500 istek limiti)
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
+      const today = new Date();
+      const currentMonth = today.getMonth();
 
-      if (!response.ok) {
-        throw new Error('Döviz kuru alınamadı');
-      }
+      console.log('Kur çekiliyor, tarih:', today);
+      const tcmbResult = await fetchTCMBRate(today);
+      const rate = tcmbResult?.rate;
 
-      const data = await response.json();
-      const rate = data.rates.TRY;
+      // TCMB başarısız olursa statik kurları kullan
+      const fallbackRate = STATIC_MONTH_RATES[currentMonth]?.rate || 49.62;
+      const finalRate = rate ?? fallbackRate;
 
-      setExchangeRate(rate);
+      console.log('TCMB sonucu:', rate, 'Fallback:', fallbackRate, 'Kullanılan:', finalRate);
+
+      setExchangeRate(finalRate);
 
       // Tarih formatla
-      const date = new Date(data.date);
-      const formattedDate = date.toLocaleDateString('tr-TR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      setRateDate(formattedDate);
+      const formattedDate = (tcmbResult?.tarih)
+        ? tcmbResult.tarih
+        : today.toLocaleDateString('tr-TR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+      const source = rate ? '(TCMB - tcmb.gov.tr XML)' : '(Statik Kur)';
+      setRateDate(`${formattedDate} ${source}`);
+
+      if (!rate) {
+        console.warn('TCMB API başarısız, statik kur kullanıldı:', fallbackRate);
+      }
 
     } catch (err) {
-      setError('Döviz kuru çekilemedi. Lütfen tekrar deneyin.');
       console.error('Kur hatası:', err);
+      // Hata durumunda da statik kur kullan
+      const currentMonth = new Date().getMonth();
+      const fallbackRate = STATIC_MONTH_RATES[currentMonth]?.rate || 49.62;
+      setExchangeRate(fallbackRate);
+      setRateDate('Statik Kur Kullanılıyor');
+      setError('');
     } finally {
       setLoading(false);
     }
@@ -301,8 +396,6 @@ function App() {
       bagkurEur: 0,
       taxTry: 0,
       taxEur: 0,
-      damgaTry: 0,
-      damgaEur: 0,
       brutBeforeVATTry: 0,
       brutBeforeVATEur: 0,
       kdvTry: 0,
@@ -311,8 +404,6 @@ function App() {
       totalEur: 0,
       muhasebeTry: 0,
       muhasebeEur: 0,
-      declarationStampTry: 0,
-      declarationStampEur: 0,
       grossTry: 0,
     };
 
@@ -333,19 +424,7 @@ function App() {
 
       const muhasebeTry = MUHASEBE_AYLIK * monthRate;
       const muhasebeEur = MUHASEBE_AYLIK;
-      const fixedDamgaTry = 150; // Aylık sabit damga vergisi
-      const fixedDamgaEur = fixedDamgaTry / monthRate;
-      const otherExpenses = fixedDamgaTry + muhasebeTry;
-
-      const monthNumber = index + 1;
-      let declarationStampTry = DECLARATION_STAMP.kdvMonthlyTry;
-      if (monthNumber % 3 === 0) {
-        declarationStampTry += DECLARATION_STAMP.geciciQuarterlyTry + DECLARATION_STAMP.muhtasarQuarterlyTry;
-      }
-      if (monthNumber === 12) {
-        declarationStampTry += DECLARATION_STAMP.yearlyIncomeTry;
-      }
-      const declarationStampEur = declarationStampTry / monthRate;
+      const otherExpenses = muhasebeTry;
 
       let low = targetNetTry;
       let high = targetNetTry * 5;
@@ -358,12 +437,18 @@ function App() {
 
       for (let i = 0; i < 60; i++) {
         const mid = (low + high) / 2;
-        const midBagkur = computeBagkur(mid);
-        const midTaxable = mid - midBagkur - otherExpenses;
+        const midTaxable = mid - otherExpenses;
         const midCumMatrah = cumulativeMatrah + midTaxable;
         const midCumTax = calculateTax(midCumMatrah);
         const midIncomeTax = midCumTax - cumulativeTax;
-        const midNet = mid - midBagkur - otherExpenses - midIncomeTax;
+
+        // SGK = (Net + Muhasebe) × 37.75%
+        // Invoice = Net + SGK + Muhasebe + Tax
+        // Invoice = Net + (Net + Muhasebe) × 0.3775 + Muhasebe + Tax
+        // Invoice - Tax = (Net + Muhasebe) × 1.3775
+        // Net = (Invoice - Tax - Muhasebe × 1.3775) / 1.3775
+        const midNet = (mid - midIncomeTax - otherExpenses * 1.3775) / 1.3775;
+        const midBagkur = Math.min((midNet + otherExpenses) * BAGKUR_RATE, BAGKUR_CAP_TRY);
 
         if (midNet > targetNetTry) {
           high = mid;
@@ -404,10 +489,6 @@ function App() {
         bagkurEur,
         taxTry: incomeTaxTry,
         taxEur: incomeTaxEur,
-        declarationStampTry,
-        declarationStampEur,
-        damgaTry: fixedDamgaTry,
-        damgaEur: fixedDamgaEur,
         muhasebeTry,
         muhasebeEur,
         taxableTry,
@@ -427,10 +508,6 @@ function App() {
       totals.netEur += netAchievedTry / monthRate;
       totals.bagkurTry += bagkurTry;
       totals.bagkurEur += bagkurEur;
-      totals.declarationStampTry += declarationStampTry;
-      totals.declarationStampEur += declarationStampEur;
-      totals.damgaTry += fixedDamgaTry;
-      totals.damgaEur += fixedDamgaEur;
       totals.muhasebeTry += muhasebeTry;
       totals.muhasebeEur += muhasebeEur;
       totals.brutBeforeVATTry += invoiceNetTry;
@@ -448,8 +525,6 @@ function App() {
     const yearlyBagkurEur = totals.bagkurEur;
     const yearlyTax = totals.taxTry;
     const yearlyTaxEur = totals.taxEur;
-    const yearlyDamga = totals.damgaTry;
-    const yearlyDamgaEur = totals.damgaEur;
     const yearlyKdv = totals.kdvTry;
     const yearlyKdvEur = totals.kdvEur;
     const totalInvoiceWithVAT = totals.totalTry;
@@ -468,10 +543,6 @@ function App() {
       monthlyBagkurEur: monthlyBagkurEurForSummary,
       yearlyBagkur,
       yearlyBagkurEur,
-      yearlyDamga,
-      monthlyDamga: yearlyDamga / monthCount,
-      yearlyDamgaEur,
-      monthlyDamgaEur: yearlyDamgaEur / monthCount,
       brutInvoiceBeforeVAT: totals.brutBeforeVATTry,
       brutInvoiceBeforeVATEur: totals.brutBeforeVATEur,
       yearlyKdv,
@@ -485,8 +556,6 @@ function App() {
       monthlyRows,
       yearlyMuhasebeTry: totals.muhasebeTry,
       yearlyMuhasebeEur: totals.muhasebeEur,
-      yearlyDeclarationStampTry: totals.declarationStampTry,
-      yearlyDeclarationStampEur: totals.declarationStampEur,
     });
   };
 
@@ -659,12 +728,12 @@ function App() {
 
                 <div className="space-y-3">
                   <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-gray-400">Yıllık Vergi Matrahı (Fatura - SGK - gider)</p>
+                    <p className="text-sm text-gray-400">Yıllık Vergi Matrahı (Fatura - gider)</p>
                     <p className="text-xl font-bold text-white">
                       {formatCurrency(results.taxBase, 'TRY')}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Matrah: fatura KDV hariç - Bağkur - (damga + muhasebe)
+                      Matrah: fatura KDV hariç - muhasebe (SGK düşülmez)
                     </p>
                   </div>
 
@@ -681,12 +750,6 @@ function App() {
                       {formatCurrency(results.yearlyTaxEur, 'EUR')}
                     </p>
                   </div>
-                  <div className="border-b border-gray-700 pb-2">
-                    <p className="text-sm text-indigo-300">Beyanname Damga (EUR)</p>
-                    <p className="text-xl font-bold text-indigo-300">
-                      {formatCurrency(results.yearlyDeclarationStampEur, 'EUR')}
-                    </p>
-                  </div>
 
                   <div className="border-b border-gray-700 pb-2">
                     <p className="text-sm text-orange-400">Bağkur Primi (TL)</p>
@@ -694,7 +757,7 @@ function App() {
                       {formatCurrency(results.yearlyBagkur, 'TRY')}
                     </p>
                     <p className="text-[11px] text-gray-500 mt-1">
-                      Oran %37,73 · Aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}
+                      Oran %37,75 · Aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}
                     </p>
                   </div>
 
@@ -725,7 +788,7 @@ function App() {
                 {/* Bağkur Bilgilendirme */}
                 <div className="mt-2 p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl">
                   <p className="text-xs text-orange-300">
-                    ℹ️ Bağkur primi %37,73 oranı ve aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)} kullanılmıştır.
+                    ℹ️ Bağkur primi %37,75 oranı ve aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)} kullanılmıştır.
                   </p>
                 </div>
               </div>
@@ -818,9 +881,7 @@ function App() {
                       <th className="py-3 px-2 text-xs font-semibold text-gray-300">Net ({tableCurrency})</th>
                       <th className="py-3 px-2 text-xs font-semibold text-orange-300">SGK Prim ({tableCurrency})</th>
                       <th className="py-3 px-2 text-xs font-semibold text-red-300">Gelir Vergisi ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-pink-300">Damga Vergisi ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-indigo-300">Beyanname Damga ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-green-300">Muhasebe (45 EUR)</th>
+                      <th className="py-3 px-2 text-xs font-semibold text-green-300">{`Muhasebe (${MUHASEBE_AYLIK} EUR)`}</th>
                       <th className="py-3 px-2 text-xs font-semibold text-yellow-300">Brüt Fatura KDV Hariç ({tableCurrency})</th>
                       <th className="py-3 px-2 text-xs font-semibold text-blue-300">KDV %20 ({tableCurrency})</th>
                       <th className="py-3 px-2 text-xs font-semibold text-purple-300">Toplam Fatura KDV Dahil ({tableCurrency})</th>
@@ -841,8 +902,6 @@ function App() {
                         <td className="py-2 px-2">{displayByTableCurrency(row.netTry, row.netEur)}</td>
                         <td className="py-2 px-2 text-orange-300">{displayByTableCurrency(row.bagkurTry, row.bagkurEur)}</td>
                         <td className="py-2 px-2 text-red-300">{displayByTableCurrency(row.taxTry, row.taxEur)}</td>
-                        <td className="py-2 px-2 text-pink-300">{displayByTableCurrency(row.damgaTry, row.damgaEur)}</td>
-                        <td className="py-2 px-2 text-indigo-300">{displayByTableCurrency(row.declarationStampTry, row.declarationStampEur)}</td>
                         <td className="py-2 px-2 text-green-300">{displayByTableCurrency(row.muhasebeTry, row.muhasebeEur)}</td>
                         <td className="py-2 px-2 font-bold text-yellow-300">{displayByTableCurrency(row.brutBeforeVATTry, row.brutBeforeVATEur)}</td>
                         <td className="py-2 px-2 text-blue-300">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</td>
@@ -861,8 +920,6 @@ function App() {
                       <td className="py-3 px-2 font-bold text-sm">{displayByTableCurrency(results.yearlyNetTry, results.yearlyNetEur)}</td>
                       <td className="py-3 px-2 font-bold text-sm text-orange-300">{displayByTableCurrency(results.yearlyBagkur, results.yearlyBagkurEur)}</td>
                       <td className="py-3 px-2 font-bold text-sm text-red-300">{displayByTableCurrency(results.yearlyTax, results.yearlyTaxEur)}</td>
-                      <td className="py-3 px-2 font-bold text-sm text-pink-300">{displayByTableCurrency(results.yearlyDamga, results.yearlyDamgaEur)}</td>
-                      <td className="py-3 px-2 font-bold text-sm text-indigo-300">{displayByTableCurrency(results.yearlyDeclarationStampTry, results.yearlyDeclarationStampEur)}</td>
                       <td className="py-3 px-2 font-bold text-sm text-green-300">{displayByTableCurrency(results.yearlyMuhasebeTry, results.yearlyMuhasebeEur)}</td>
                       <td className="py-3 px-2 font-bold text-sm text-yellow-300">{displayByTableCurrency(results.brutInvoiceBeforeVAT, results.brutInvoiceBeforeVATEur)}</td>
                       <td className="py-3 px-2 font-bold text-sm text-blue-300">{displayByTableCurrency(results.yearlyKdv, results.yearlyKdvEur)}</td>
@@ -875,7 +932,7 @@ function App() {
               {/* Bilgilendirme notu */}
               <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
                 <p className="text-sm text-yellow-300">
-                  📄 <strong>Brüt Fatura:</strong> KDV hariç kesilecek tutardır; net + Bağkur + (damga + muhasebe) giderleri + ilgili ay gelir vergisini içerir. KDV %20 ayrıca eklenir.
+                  📄 <strong>Brüt Fatura:</strong> KDV hariç kesilecek tutardır; net + Bağkur + muhasebe giderleri + ilgili ay gelir vergisini içerir. KDV %20 ayrıca eklenir.
                 </p>
                 <p className="text-sm text-blue-300 mt-2">
                   💡 <strong>Kümülatif:</strong> İlgili aya kadar biriken toplam (Net gelir + Bağkur + Muhasebe ücretleri).
@@ -884,10 +941,10 @@ function App() {
                   Örnek: Mart ayı = (Ocak net + Bağkur + Muhasebe) + (Şubat net + Bağkur + Muhasebe) + (Mart net + Bağkur + Muhasebe)
                 </p>
                 <p className="text-xs text-cyan-300 mt-2">
-                  🌍 <strong>Kur:</strong> Geçmiş aylar için o ayın son günü kuru, en son ay için bugünün (güncel) kuru kullanılmıştır.
+                  🌍 <strong>Kur:</strong> Her ayın 20'si kuru kullanılır. Bulunduğumuz ay 20'sine gelmediyse güncel kur kullanılır.
                 </p>
                 <p className="text-xs text-orange-300 mt-2">
-                  ⚠️ <strong>Önemli:</strong> Gelir vergisi, fatura KDV hariç tutardan Bağkur ve (damga + muhasebe) giderleri düşülerek oluşan kümülatif matrah üzerinden hesaplanır.
+                  ⚠️ <strong>Önemli:</strong> Gelir vergisi, fatura KDV hariç tutardan sadece muhasebe giderleri düşülerek oluşan kümülatif matrah üzerinden hesaplanır. SGK primi vergi matrahından düşülmez.
                 </p>
               </div>
             </div>
@@ -897,13 +954,13 @@ function App() {
         {/* Footer Bilgilendirme */}
         <footer className="mt-12 text-center text-sm text-gray-400 space-y-2">
           <p>
-            ⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve Bağkur prim oranına (%37,73, aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) göre yapılmıştır.
+            ⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve Bağkur prim oranına (%37,75, aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) göre yapılmıştır.
           </p>
           <p>
-            Matrah: fatura KDV hariç - Bağkur - (damga + muhasebe) giderleri. Gerçek durumunuz için mutlaka mali müşavirinize danışın.
+            Matrah: fatura KDV hariç - muhasebe giderleri (SGK primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.
           </p>
           <p className="text-xs text-gray-500">
-            Döviz kuru: exchangerate-api.com | Tasarım: Futuristik Glassmorphism UI
+            Döviz kuru: TCMB (T.C. Merkez Bankası) | Tasarım: Futuristik Glassmorphism UI
           </p>
         </footer>
 
