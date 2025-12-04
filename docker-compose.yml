@@ -6,8 +6,8 @@ services:
       context: .
       target: app
       args:
-        # Boş bırakırsanız UI API'yi aynı origin (/api) üzerinden çağırır.
-        VITE_API_URL: ""
+        # Prod’da API adresi
+        VITE_API_URL: "https://muhasebe.berdx.com"
     environment:
       - PORT=3001
     ports:
