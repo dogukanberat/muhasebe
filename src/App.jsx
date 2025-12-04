@@ -56,9 +56,9 @@ const STATIC_MONTH_RATES = [
   { month: 'Aralık', rate: 49.620 },
 ];
 
-// Bağkur oranları
+// SGK oranları
 const BAGKUR_DEFAULT_RATE = 0.3775; // %37,75
-const BAGKUR_DISCOUNT_RATE = 0.32; // %32 indirimli
+const BAGKUR_DISCOUNT_RATE = 0.3275; // %32,75 indirimli
 const BAGKUR_CAP_TRY = 68264.49; // Aylık tavan
 
 const MONTH_LABELS = {
@@ -93,38 +93,38 @@ const translations = {
     title: '2025 Gelir Vergisi & Muhasebe Hesaplayıcı',
     subtitle: 'EUR net → TRY ve Ücret Dışı Gelir Vergisi Tarifesi',
     incomeSectionTitle: 'Gelir Bilgileri',
-    incomeSectionInfo: 'Net geliri girin, kuruluş tarihini seçin; Bağkur oranını belirleyin. İlk faaliyet ayı otomatik %37,75, sonrakiler seçtiğiniz oranla hesaplanır.',
+    incomeSectionInfo: 'Net geliri girin, kuruluş tarihini seçin; SGK oranını belirleyin. İlk faaliyet ayı otomatik %37,75, sonrakiler seçtiğiniz oranla hesaplanır.',
     badgeYear: 'Kur yılı: {year}',
-    badgeBagkur: 'Bağkur: %{rate}',
+    badgeSGK: 'SGK: %{rate}',
     badgeAccounting: 'Muhasebe: {fee}',
     monthlyNetLabel: 'Aylık Net Gelir *',
     monthlyNetPlaceholderEur: 'Örn: 5.000',
     monthlyNetPlaceholderTry: 'Örn: 180.000',
-    monthlyNetDesc: 'Vergi, Bağkur ve muhasebe düşülmeden elinize geçen tutar. Para birimini yukarıdan değiştirebilirsiniz.',
+    monthlyNetDesc: 'Vergi, SGK ve muhasebe düşülmeden elinize geçen tutar. Para birimini yukarıdan değiştirebilirsiniz.',
     startDateLabel: 'Kuruluş Tarihi (Ay & Yıl)',
-    startDateNote: 'İlk faaliyet ayı (aynı yıl içinde) %37,75; sonraki aylar seçtiğiniz Bağkur oranıyla hesaplanır.',
-    bagkurRateLabel: 'Bağkur Oranı',
-    bagkurInfoTitle: 'Bağkur prim indirimi',
+    startDateNote: 'İlk faaliyet ayı (aynı yıl içinde) %37,75; sonraki aylar seçtiğiniz SGK oranıyla hesaplanır.',
+    bagkurRateLabel: 'SGK Oranı',
+    bagkurInfoTitle: 'SGK prim indirimi',
     bagkurInfoBody1: 'Kuruluş yılındaki ilk ay %37,75. Şartları sağlarsanız sonraki aylarda indirimli %32 uygulanabilir.',
     bagkurInfoBody2: 'Şartlar: vadesi geçmiş prim borcu olmaması, primlerin zamanında ödenmesi. Borcu yapılandırıp taksit ve cari primlerini düzenli ödeyenler de %5 indirimden yararlanır. Başvuru gerekmez; uygun olanlar otomatik faydalanır.',
     bagkurInfoFoot: 'Seçtiğiniz oran (ilk ay hariç) tüm hesaplamalara uygulanır.',
     bagkurRateOptionDefault: '%37,75 (standart / ilk ay)',
-    bagkurRateOptionDiscount: '%32 (indirimli)',
+    bagkurRateOptionDiscount: '%32,75 (indirimli)',
     bagkurCapLabel: 'Tavan: {cap}',
     bagkurFirstMonthLabel: 'İlk ay: %37,75',
     bagkurSelectedLabel: 'Seçili oran: %{rate}',
     calculateButton: '📊 Hesapla',
     loading: 'Yükleniyor...',
-    metaLine: 'Kur yılı: {calcYear} · Başlangıç: {startMonth} {startYear} · Bağkur: %{bagkur}',
+    metaLine: 'Kur yılı: {calcYear} · Başlangıç: {startMonth} {startYear} · SGK: %{bagkur}',
     errorInvalidIncome: 'Lütfen geçerli bir aylık net gelir girin.',
     errorRateMissing: 'Döviz kuru yüklenemedi. Lütfen sayfayı yenileyin.',
     errorNoRates: 'Seçilen başlangıç ayı için kur verisi bulunamadı.',
     monthlySummaryTitle: 'Aylık Özet - {month} {year}',
     netIncomeLabel: 'Net Gelir',
     netTooltipTitle: '💰 Net Gelir Detayı',
-    netTooltipDesc: 'Vergi, Bağkur ve muhasebe hariç hedeflenen net ödeme.',
-    bagkurLabel: 'Bağkur Primi',
-    bagkurTooltipTitle: '🛡️ Bağkur Primi Hesabı',
+    netTooltipDesc: 'Vergi, SGK ve muhasebe hariç hedeflenen net ödeme.',
+    bagkurLabel: 'SGK Primi',
+    bagkurTooltipTitle: '🛡️ SGK Primi Hesabı',
     bagkurTooltipDesc: 'Net tutar × %{rate} (tavan {cap}) üzerinden hesaplanır.',
     accountingLabel: 'Muhasebe',
     incomeTaxLabel: 'Gelir Vergisi',
@@ -138,7 +138,7 @@ const translations = {
     incomeTaxFormula: 'Formül: Vergi = Tarifede kümülatif vergi(Yeni kümülatif matrah) - Tarifede kümülatif vergi(Önceki kümülatif matrah).',
     vatExclLabel: 'KDV Hariç Tutar',
     vatExclTooltipTitle: '🧾 KDV Hariç Tutar',
-    vatExclTooltipDesc: 'Net + Bağkur + Muhasebe + Gelir Vergisi toplamıdır.',
+    vatExclTooltipDesc: 'Net + SGK + Muhasebe + Gelir Vergisi toplamıdır.',
     vatInclLabel: 'KDV Dahil Tutar',
     vatInclTooltipTitle: '🧮 KDV Dahil',
     vatInclTooltipDesc: 'KDV hariç tutara %{vat} KDV eklenmiş halidir.',
@@ -148,7 +148,7 @@ const translations = {
     colRate: 'Kur',
     colTaxBracket: 'Vergi Dilimi',
     colNet: 'Net ({currency})',
-    colBagkur: 'Bağkur Prim ({currency})',
+    colSGK: 'SGK Prim ({currency})',
     colIncomeTax: 'Gelir Vergisi ({currency})',
     colAccounting: 'Muhasebe ({fee} EUR)',
     colGrossExcl: 'Brüt Fatura KDV Hariç ({currency})',
@@ -159,14 +159,14 @@ const translations = {
     rateManualPlaceholder: 'Kur giriniz',
     rateInfoPrefix: 'Dahil toplam:',
     cardBracketRate: 'Oran',
-    noteGrossInvoice: '📄 Brüt Fatura: KDV hariç kesilecek tutardır; net + Bağkur + muhasebe giderleri + ilgili ay gelir vergisini içerir. KDV %{vat} ayrıca eklenir.',
-    noteCumulative: '💡 Kümülatif: İlgili aya kadar biriken toplam (Net gelir + Bağkur + Muhasebe ücretleri).',
-    noteCumulativeExample: 'Örnek: Mart ayı = (Ocak net + Bağkur + Muhasebe) + (Şubat net + Bağkur + Muhasebe) + (Mart net + Bağkur + Muhasebe)',
-    noteBagkurDiscount: '🛡️ Bağkur indirimi: Kuruluş yılındaki ilk ay %37,75; sonraki aylarda şartları sağlarsanız %32 uygulanabilir (başvuru gerekmez).',
+    noteGrossInvoice: '📄 Brüt Fatura: KDV hariç kesilecek tutardır; net + SGK + muhasebe giderleri + ilgili ay gelir vergisini içerir. KDV %{vat} ayrıca eklenir.',
+    noteCumulative: '💡 Kümülatif: İlgili aya kadar biriken toplam (Net gelir + SGK + Muhasebe ücretleri).',
+    noteCumulativeExample: 'Örnek: Mart ayı = (Ocak net + SGK + Muhasebe) + (Şubat net + SGK + Muhasebe) + (Mart net + SGK + Muhasebe)',
+    noteSGKDiscount: '🛡️ SGK indirimi: Kuruluş yılındaki ilk ay %37,75; sonraki aylarda şartları sağlarsanız %32 uygulanabilir (başvuru gerekmez).',
     noteRateInfo: '🌍 Kur: Her ayın 20\'si kuru kullanılır. Bulunduğumuz ay 20\'sine gelmediyse manuel kur girişi yapabilirsiniz.',
-    noteImportant: '⚠️ Önemli: Gelir vergisi, fatura KDV hariç tutarın tamamının kümülatifi üzerinden hesaplanır. Bağkur primi vergi matrahından düşülmez.',
-    footerLine1: '⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve seçtiğiniz Bağkur prim oranına (%{rate}, aylık tavan {cap}) göre yapılmıştır.',
-    footerLine2: 'Matrah: fatura KDV hariç tutarın tamamı (Bağkur primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.',
+    noteImportant: '⚠️ Önemli: Gelir vergisi, fatura KDV hariç tutarın tamamının kümülatifi üzerinden hesaplanır. SGK primi vergi matrahından düşülmez.',
+    footerLine1: '⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve seçtiğiniz SGK prim oranına (%{rate}, aylık tavan {cap}) göre yapılmıştır.',
+    footerLine2: 'Matrah: fatura KDV hariç tutarın tamamı (SGK primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.',
     footerLine3: 'Döviz kuru: TCMB (T.C. Merkez Bankası) | Doğukan Elbasan',
     verifyButtonLabel: 'Fatura KDV Hariç',
     verifyTooltip: 'Tutar kopyalanır ve GİB gelir vergisi hesaplama sayfası yeni sekmede açılır. Kopyaladığınız tutarı oraya girerek teyit edebilirsiniz.',
@@ -184,38 +184,38 @@ const translations = {
     title: '2025 Income Tax & Accounting Calculator',
     subtitle: 'EUR net → TRY and Non-Wage Income Tax Tariff',
     incomeSectionTitle: 'Income Details',
-    incomeSectionInfo: 'Enter your net income, pick the incorporation date, and choose the Bagkur rate. First month is fixed at 37.75%, following months use your selection.',
+    incomeSectionInfo: 'Enter your net income, pick the incorporation date, and choose the SGK rate. First month is fixed at 37.75%, following months use your selection.',
     badgeYear: 'Rate year: {year}',
-    badgeBagkur: 'Bagkur: %{rate}',
+    badgeSGK: 'SGK: %{rate}',
     badgeAccounting: 'Accounting: {fee}',
     monthlyNetLabel: 'Monthly Net Income *',
     monthlyNetPlaceholderEur: 'e.g. 5,000',
     monthlyNetPlaceholderTry: 'e.g. 180,000',
-    monthlyNetDesc: 'Amount you take home before income tax, Bagkur, and accounting. You can change currency above.',
+    monthlyNetDesc: 'Amount you take home before income tax, SGK, and accounting. You can change currency above.',
     startDateLabel: 'Incorporation Month & Year',
-    startDateNote: 'First activity month (same year) uses 37.75%; following months use the selected Bagkur rate.',
-    bagkurRateLabel: 'Bagkur Rate',
-    bagkurInfoTitle: 'Bagkur premium discount',
+    startDateNote: 'First activity month (same year) uses 37.75%; following months use the selected SGK rate.',
+    bagkurRateLabel: 'SGK Rate',
+    bagkurInfoTitle: 'SGK premium discount',
     bagkurInfoBody1: 'First month in the incorporation year is 37.75%. If eligible, 32% discounted rate applies for later months.',
     bagkurInfoBody2: 'Conditions: no overdue premiums and on-time payments. Those who restructured debt and keep current + installments paid can benefit automatically; no application needed.',
     bagkurInfoFoot: 'Selected rate applies to all months except the first month in the first year.',
     bagkurRateOptionDefault: '37.75% (standard / first month)',
-    bagkurRateOptionDiscount: '32% (discounted)',
+    bagkurRateOptionDiscount: '32.75% (discounted)',
     bagkurCapLabel: 'Cap: {cap}',
     bagkurFirstMonthLabel: 'First month: 37.75%',
     bagkurSelectedLabel: 'Selected rate: %{rate}',
     calculateButton: '📊 Calculate',
     loading: 'Loading...',
-    metaLine: 'Rate year: {calcYear} · Start: {startMonth} {startYear} · Bagkur: %{bagkur}',
+    metaLine: 'Rate year: {calcYear} · Start: {startMonth} {startYear} · SGK: %{bagkur}',
     errorInvalidIncome: 'Please enter a valid monthly net income.',
     errorRateMissing: 'Exchange rate could not be loaded. Please refresh the page.',
     errorNoRates: 'No rate data found for the selected start month.',
     monthlySummaryTitle: 'Monthly Summary - {month} {year}',
     netIncomeLabel: 'Net Income',
     netTooltipTitle: '💰 Net Income Detail',
-    netTooltipDesc: 'Target take-home amount before income tax, Bagkur, and accounting.',
-    bagkurLabel: 'Bagkur Premium',
-    bagkurTooltipTitle: '🛡️ Bagkur Premium Calculation',
+    netTooltipDesc: 'Target take-home amount before income tax, SGK, and accounting.',
+    bagkurLabel: 'SGK Premium',
+    bagkurTooltipTitle: '🛡️ SGK Premium Calculation',
     bagkurTooltipDesc: 'Calculated as Net × %{rate} (cap {cap}).',
     accountingLabel: 'Accounting',
     incomeTaxLabel: 'Income Tax',
@@ -229,7 +229,7 @@ const translations = {
     incomeTaxFormula: 'Formula: Tax = tariff cumulative(New cumulative base) − tariff cumulative(Previous cumulative base).',
     vatExclLabel: 'Amount excl. VAT',
     vatExclTooltipTitle: '🧾 Amount excl. VAT',
-    vatExclTooltipDesc: 'Sum of Net + Bagkur + Accounting + Income Tax.',
+    vatExclTooltipDesc: 'Sum of Net + SGK + Accounting + Income Tax.',
     vatInclLabel: 'Amount incl. VAT',
     vatInclTooltipTitle: '🧮 Amount incl. VAT',
     vatInclTooltipDesc: 'Adds {vat} VAT on the amount excl. VAT.',
@@ -239,7 +239,7 @@ const translations = {
     colRate: 'Rate',
     colTaxBracket: 'Tax Bracket',
     colNet: 'Net ({currency})',
-    colBagkur: 'Bagkur ({currency})',
+    colSGK: 'SGK ({currency})',
     colIncomeTax: 'Income Tax ({currency})',
     colAccounting: 'Accounting ({fee} EUR)',
     colGrossExcl: 'Invoice excl. VAT ({currency})',
@@ -250,14 +250,14 @@ const translations = {
     rateManualPlaceholder: 'Enter rate',
     rateInfoPrefix: 'Incl. total:',
     cardBracketRate: 'Rate',
-    noteGrossInvoice: '📄 Gross Invoice: amount to bill excluding VAT; includes net + Bagkur + accounting + that month\'s income tax. VAT {vat} is added on top.',
-    noteCumulative: '💡 Cumulative: total up to the given month (Net income + Bagkur + Accounting fees).',
-    noteCumulativeExample: 'Example: March = (Jan net + Bagkur + Accounting) + (Feb net + Bagkur + Accounting) + (Mar net + Bagkur + Accounting)',
-    noteBagkurDiscount: '🛡️ Bagkur discount: first month in the incorporation year 37.75%; later months 32% if eligible (no application needed).',
+    noteGrossInvoice: '📄 Gross Invoice: amount to bill excluding VAT; includes net + SGK + accounting + that month\'s income tax. VAT {vat} is added on top.',
+    noteCumulative: '💡 Cumulative: total up to the given month (Net income + SGK + Accounting fees).',
+    noteCumulativeExample: 'Example: March = (Jan net + SGK + Accounting) + (Feb net + SGK + Accounting) + (Mar net + SGK + Accounting)',
+    noteSGKDiscount: '🛡️ SGK discount: first month in the incorporation year 37.75%; later months 32% if eligible (no application needed).',
     noteRateInfo: '🌍 Rate: Uses the 20th day rate for each month. If current month is before the 20th, you can enter the rate manually.',
-    noteImportant: '⚠️ Important: Income tax is calculated on the full invoice amount excluding VAT (Bagkur premium is not deducted from the base).',
-    footerLine1: '⚠️ This calculation uses the 2025 non-wage income tax tariff and your selected Bagkur rate (%{rate}, monthly cap {cap}).',
-    footerLine2: 'Tax base: full invoice amount excluding VAT (Bagkur premium is not deducted). Consult your accountant for your exact situation.',
+    noteImportant: '⚠️ Important: Income tax is calculated on the full invoice amount excluding VAT (SGK premium is not deducted from the base).',
+    footerLine1: '⚠️ This calculation uses the 2025 non-wage income tax tariff and your selected SGK rate (%{rate}, monthly cap {cap}).',
+    footerLine2: 'Tax base: full invoice amount excluding VAT (SGK premium is not deducted). Consult your accountant for your exact situation.',
     footerLine3: 'Exchange rate: CBRT (Central Bank of Türkiye) | Doğukan Elbasan',
     verifyButtonLabel: 'Invoice excl. VAT',
     verifyTooltip: 'Copies the amount and opens the GIB income tax calculator in a new tab. Paste the amount there to cross-check.',
@@ -278,13 +278,13 @@ const LS_KEY_PREF_VERSION = 'gvh_pref_version';
 const LS_KEY_INCLUDE_VAT = 'gvh_include_vat';
 const PREF_VERSION = '2';
 
-// Aylık brütü çözer: G - vergi - Bağkur = hedef net
-// Vergi, kümülatif matrah (önceki brüt - önceki Bağkur) üzerine eklenen yeni matrah (G - Bağkur) için hesaplanır
-const solveMonthlyGrossForNet = (targetNet, prevMatrah, computeBagkur) => {
+// Aylık brütü çözer: G - vergi - SGK = hedef net
+// Vergi, kümülatif matrah (önceki brüt - önceki SGK) üzerine eklenen yeni matrah (G - SGK) için hesaplanır
+const solveMonthlyGrossForNet = (targetNet, prevMatrah, computeSGK) => {
   if (!Number.isFinite(targetNet) || targetNet <= 0) return 0;
 
   const f = (g) => {
-    const bagkur = computeBagkur(g);
+    const bagkur = computeSGK(g);
     const matrah = g - bagkur;
     const tax = calculateTax(prevMatrah + matrah) - calculateTax(prevMatrah);
     return g - tax - bagkur - targetNet; // kök = 0
@@ -353,8 +353,8 @@ function App() {
   const [manualRate, setManualRate] = useState(''); // Manuel kur girişi
   const [startMonthIndex, setStartMonthIndex] = useState(0); // Şirket başlangıç ayı (0=Ocak)
   const [startYear, setStartYear] = useState(new Date().getFullYear()); // Şirket başlangıç yılı
-  const [bagkurRate, setBagkurRate] = useState(BAGKUR_DISCOUNT_RATE); // Bağkur oranı (varsayılan %32)
-  const [bagkurInfoOpen, setBagkurInfoOpen] = useState(false);
+  const [bagkurRate, setBagkurRate] = useState(BAGKUR_DISCOUNT_RATE); // SGK oranı (varsayılan %32,75)
+  const [bagkurInfoOpen, setSGKInfoOpen] = useState(false);
   const [calcYear, setCalcYear] = useState(new Date().getFullYear()); // Kur/vergi yılı
   const autoCalcRequested = React.useRef(false);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
@@ -688,7 +688,7 @@ function App() {
     const monthlyNetEurNum = incomeCurrency === 'EUR'
       ? netInput
       : (exchangeRate ? netInput / (exchangeRate || 1) : 0);
-    const computeBagkur = (netTry, rateForMonth = bagkurRate) => Math.min(netTry * rateForMonth, BAGKUR_CAP_TRY);
+    const computeSGK = (netTry, rateForMonth = bagkurRate) => Math.min(netTry * rateForMonth, BAGKUR_CAP_TRY);
 
     // Manuel kur varsa onu kullan, yoksa backend'den gelen kuru kullan
     const effectiveRate = manualRate ? parseFloat(manualRate) : exchangeRate;
@@ -728,8 +728,8 @@ function App() {
 
     // Özet kartı için güncel ay değerleri
     const monthlyNetTryForSummary = incomeCurrency === 'EUR' ? netInput * currentRate : netInput;
-    const monthlyBagkurForSummary = computeBagkur(monthlyNetTryForSummary);
-    const monthlyBagkurEurForSummary = currentRate ? monthlyBagkurForSummary / currentRate : 0;
+    const monthlySGKForSummary = computeSGK(monthlyNetTryForSummary);
+    const monthlySGKEurForSummary = currentRate ? monthlySGKForSummary / currentRate : 0;
 
     const totals = {
       netTry: 0,
@@ -761,7 +761,7 @@ function App() {
 
     ratesForCalc.forEach((monthData, index) => {
       // İlk faaliyet ayı aynı yıl içindeyse %37,75; sonraki aylar seçilen oran
-      const appliedBagkurRate = (startYear === calcYear && index === 0)
+      const appliedSGKRate = (startYear === calcYear && index === 0)
         ? BAGKUR_DEFAULT_RATE
         : bagkurRate;
       const monthRate = monthRateFallback(monthData);
@@ -791,15 +791,15 @@ function App() {
         const midCumTax = calculateTax(midCumMatrah);
         const midIncomeTax = midCumTax - cumulativeTax;
 
-        // Bağkur = Net × oran (varsayılan %37,75 veya indirimli %32)
-        // Invoice = Net + Bağkur + Muhasebe + Tax
+        // SGK = Net × oran (varsayılan %37,75 veya indirimli %32,75)
+        // Invoice = Net + SGK + Muhasebe + Tax
         // Invoice = Net × (1 + oran) + Muhasebe + Tax
         // Net (tavan dikkate alınmadan) = (Invoice - Tax - Muhasebe) / (1 + oran)
-        const bagkurFactor = 1 + appliedBagkurRate;
+        const bagkurFactor = 1 + appliedSGKRate;
         const midNetUncapped = (mid - midIncomeTax - otherExpenses) / bagkurFactor;
-        const midBagkurUncapped = midNetUncapped * appliedBagkurRate;
-        const midBagkur = Math.min(midBagkurUncapped, BAGKUR_CAP_TRY);
-        const midNet = mid - midIncomeTax - midBagkur - otherExpenses;
+        const midSGKUncapped = midNetUncapped * appliedSGKRate;
+        const midSGK = Math.min(midSGKUncapped, BAGKUR_CAP_TRY);
+        const midNet = mid - midIncomeTax - midSGK - otherExpenses;
 
         if (midNet > targetNetTry) {
           high = mid;
@@ -809,7 +809,7 @@ function App() {
 
         invoiceNetTry = mid;
         incomeTaxTry = midIncomeTax;
-        bagkurTry = midBagkur;
+        bagkurTry = midSGK;
         taxableTry = midTaxable;
         netAchievedTry = midNet;
       }
@@ -836,7 +836,7 @@ function App() {
         rate: monthRate,
         source: monthData.source || 'Unknown',
         isCurrent: monthData.isCurrent || false,
-        bagkurRateApplied: appliedBagkurRate,
+        bagkurRateApplied: appliedSGKRate,
         netTry: netAchievedTry,
         netEur: netAchievedTry / monthRate,
         bagkurTry,
@@ -875,8 +875,8 @@ function App() {
     const monthCount = monthlyRows.length || 1;
     const yearlyNetTry = totals.netTry;
     const yearlyNetEur = totals.netEur;
-    const yearlyBagkur = totals.bagkurTry;
-    const yearlyBagkurEur = totals.bagkurEur;
+    const yearlySGK = totals.bagkurTry;
+    const yearlySGKEur = totals.bagkurEur;
     const yearlyTax = totals.taxTry;
     const yearlyTaxEur = totals.taxEur;
     const yearlyKdv = totals.kdvTry;
@@ -893,10 +893,10 @@ function App() {
       taxBase: yearlyTaxBase,
       yearlyTax,
       yearlyTaxEur,
-      monthlyBagkur: monthlyBagkurForSummary,
-      monthlyBagkurEur: monthlyBagkurEurForSummary,
-      yearlyBagkur,
-      yearlyBagkurEur,
+      monthlySGK: monthlySGKForSummary,
+      monthlySGKEur: monthlySGKEurForSummary,
+      yearlySGK,
+      yearlySGKEur,
       brutInvoiceBeforeVAT: totals.brutBeforeVATTry,
       brutInvoiceBeforeVATEur: totals.brutBeforeVATEur,
       yearlyKdv,
@@ -1022,7 +1022,7 @@ function App() {
               <h2 className="text-2xl font-bold text-neon-purple">{translate('incomeSectionTitle')}</h2>
               <div className="flex flex-wrap gap-2 text-xs text-gray-300">
                 <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-neon-purple/30">{translate('badgeYear', { year: calcYear })}</span>
-                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-orange-300/30">{translate('badgeBagkur', { rate: formatNumber(bagkurRate * 100, 2) })}</span>
+                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-orange-300/30">{translate('badgeSGK', { rate: formatNumber(bagkurRate * 100, 2) })}</span>
                 <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-cyan-300/30">{translate('badgeAccounting', { fee: formatCurrency(MUHASEBE_AYLIK, 'EUR', 0) })}</span>
               </div>
             </div>
@@ -1104,7 +1104,7 @@ function App() {
               </p>
             </div>
 
-            {/* Bağkur oranı seçimi */}
+            {/* SGK oranı seçimi */}
             <div className="glass border border-orange-300/30 rounded-2xl p-4 md:col-span-2">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-semibold text-white">
@@ -1113,7 +1113,7 @@ function App() {
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setBagkurInfoOpen((prev) => !prev)}
+                    onClick={() => setSGKInfoOpen((prev) => !prev)}
                     className="w-7 h-7 rounded-full bg-slate-800 border border-orange-300/50 text-orange-200 text-xs font-bold flex items-center justify-center hover:border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-300"
                   >
                     ?
@@ -1236,7 +1236,7 @@ function App() {
 
                     <div className="text-2xl font-bold text-gray-400">+</div>
 
-                    {/* Bağkur Primi */}
+                    {/* SGK Primi */}
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
                         <p className="text-xs text-orange-400 mb-1">{translate('bagkurLabel')}</p>
@@ -1259,13 +1259,13 @@ function App() {
                             <span className="font-semibold text-white">{formatCurrency(bagkurBaseTry, 'TRY')}</span>
                           </div>
                           <div className="flex justify-between">
-                        <span className="text-gray-400">{lang === 'en' ? 'Bagkur (EUR)' : 'Bağkur (EUR)'}</span>
-                        <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">{lang === 'en' ? 'Bagkur (TRY)' : 'Bağkur (TL)'}</span>
-                        <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurTry, 'TRY')}</span>
-                      </div>
+                            <span className="text-gray-400">{lang === 'en' ? 'SGK (EUR)' : 'SGK (EUR)'}</span>
+                            <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">{lang === 'en' ? 'SGK (TRY)' : 'SGK (TL)'}</span>
+                            <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurTry, 'TRY')}</span>
+                          </div>
                         </div>
                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
                       </div>
@@ -1510,7 +1510,7 @@ function App() {
                         <p className="text-sm font-semibold text-white break-words">{displayByTableCurrency(row.netTry, row.netEur)}</p>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
-                        <p className="text-orange-300 text-[11px]">{translate('colBagkur', { currency: tableCurrency })}</p>
+                        <p className="text-orange-300 text-[11px]">{translate('colSGK', { currency: tableCurrency })}</p>
                         <p className="text-sm font-semibold text-orange-200 break-words">{displayByTableCurrency(row.bagkurTry, row.bagkurEur)}</p>
                         <p className="text-[10px] text-gray-500">{translate('cardBracketRate')}: %{formatNumber((row.bagkurRateApplied || bagkurRate) * 100, 2)}</p>
                       </div>
@@ -1552,7 +1552,7 @@ function App() {
                         <th className="py-3 px-2 text-xs font-semibold text-cyan-300">{translate('colRate')}</th>
                         <th className="py-3 px-2 text-xs font-semibold text-gray-300">{translate('colTaxBracket')}</th>
                         <th className="py-3 px-2 text-xs font-semibold text-gray-300">{translate('colNet', { currency: tableCurrency })}</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-orange-300">{translate('colBagkur', { currency: tableCurrency })}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-orange-300">{translate('colSGK', { currency: tableCurrency })}</th>
                         <th className="py-3 px-2 text-xs font-semibold text-red-300">{translate('colIncomeTax', { currency: tableCurrency })}</th>
                         <th className="py-3 px-2 text-xs font-semibold text-green-300">{translate('colAccounting', { fee: MUHASEBE_AYLIK })}</th>
                         <th className="py-3 px-2 text-xs font-semibold text-yellow-300">{translate('colGrossExcl', { currency: tableCurrency })}</th>
@@ -1601,7 +1601,7 @@ function App() {
                           {`${displayBracketName(getTaxBracket(results.taxBase).name)} (%${getTaxBracket(results.taxBase).rate})`}
                         </td>
                         <td className="py-3 px-2 font-bold text-sm">{displayByTableCurrency(results.yearlyNetTry, results.yearlyNetEur)}</td>
-                        <td className="py-3 px-2 font-bold text-sm text-orange-300">{displayByTableCurrency(results.yearlyBagkur, results.yearlyBagkurEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-orange-300">{displayByTableCurrency(results.yearlySGK, results.yearlySGKEur)}</td>
                         <td className="py-3 px-2 font-bold text-sm text-red-300 relative">
                           <span className="relative z-10 inline-block px-2 py-1 rounded-md bg-slate-900/80">
                             {displayByTableCurrency(results.yearlyTax, results.yearlyTaxEur)}
@@ -1669,7 +1669,7 @@ function App() {
                   {translate('noteCumulativeExample')}
                 </p>
                 <p className="text-xs text-orange-200 mt-2">
-                  {translate('noteBagkurDiscount')}
+                  {translate('noteSGKDiscount')}
                 </p>
                 <p className="text-xs text-cyan-300 mt-2">
                   {translate('noteRateInfo')}
