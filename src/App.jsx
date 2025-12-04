@@ -618,6 +618,17 @@ function App() {
                 ? results.monthlyRows.length - 1
                 : Math.max(0, results.monthlyRows.length - 2);
               const monthDataToShow = results.monthlyRows[monthIndexToShow] || results.monthlyRows[results.monthlyRows.length - 1];
+              const safeRate = monthDataToShow.rate || 1;
+              const bagkurBaseTry = monthDataToShow.netTry || 0;
+              const bagkurBaseEur = bagkurBaseTry / safeRate;
+              const kdvAmountEur = monthDataToShow.kdvEur || 0;
+              const kdvAmountTry = monthDataToShow.kdvTry || 0;
+              const monthlyTaxable = monthDataToShow.taxableTry || 0;
+              const cumulativeTaxable = results.monthlyRows
+                .slice(0, monthIndexToShow + 1)
+                .reduce((sum, row) => sum + (row.taxableTry || 0), 0);
+              const prevCumulativeTaxable = cumulativeTaxable - monthlyTaxable;
+              const monthlyIncomeTaxTry = monthDataToShow.taxTry || 0;
 
               return (
                 <div className="glass rounded-3xl p-6 neon-glow-cyan">
@@ -627,21 +638,65 @@ function App() {
 
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     {/* Net Gelir */}
-                    <div className="glass p-4 rounded-xl text-center min-w-[120px]">
-                      <p className="text-xs text-gray-400 mb-1">Net Gelir</p>
-                      <p className="text-lg font-bold text-white">
-                        {formatCurrency(monthDataToShow.netEur, 'EUR')}
-                      </p>
+                    <div className="relative group">
+                      <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
+                        <p className="text-xs text-gray-400 mb-1">Net Gelir</p>
+                        <p className="text-lg font-bold text-white">
+                          {formatCurrency(monthDataToShow.netEur, 'EUR')}
+                        </p>
+                      </div>
+                      <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-neon-cyan/30">
+                        <div className="font-bold text-neon-cyan mb-2">💰 Net Gelir Detayı</div>
+                        <p className="text-gray-300 text-xs mb-2">Vergi, SGK ve muhasebe hariç hedeflenen net ödeme.</p>
+                        <div className="text-[11px] space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">EUR</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.netEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">TL</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.netTry, 'TRY')}</span>
+                          </div>
+                        </div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
+                      </div>
                     </div>
 
                     <div className="text-2xl font-bold text-gray-400">+</div>
 
                     {/* SGK Primi */}
-                    <div className="glass p-4 rounded-xl text-center min-w-[120px]">
-                      <p className="text-xs text-orange-400 mb-1">SGK Primi</p>
-                      <p className="text-lg font-bold text-orange-400">
-                        {formatCurrency(monthDataToShow.bagkurEur, 'EUR')}
-                      </p>
+                    <div className="relative group">
+                      <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
+                        <p className="text-xs text-orange-400 mb-1">SGK Primi</p>
+                        <p className="text-lg font-bold text-orange-400">
+                          {formatCurrency(monthDataToShow.bagkurEur, 'EUR')}
+                        </p>
+                      </div>
+                      <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-orange-400/30">
+                        <div className="font-bold text-orange-300 mb-2">🛡️ SGK Primi Hesabı</div>
+                        <p className="text-gray-300 text-xs mb-2">
+                          Net tutar × %37,75 (tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) üzerinden hesaplanır.
+                        </p>
+                        <div className="text-[11px] space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Matrah (EUR)</span>
+                            <span className="font-semibold text-white">{formatCurrency(bagkurBaseEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Matrah (TL)</span>
+                            <span className="font-semibold text-white">{formatCurrency(bagkurBaseTry, 'TRY')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">SGK (EUR)</span>
+                            <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">SGK (TL)</span>
+                            <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurTry, 'TRY')}</span>
+                          </div>
+                        </div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
+                      </div>
                     </div>
 
                     <div className="text-2xl font-bold text-gray-400">+</div>
@@ -658,7 +713,34 @@ function App() {
                       {/* Tooltip */}
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-red-400/30">
                         <div className="font-bold text-red-400 mb-2">📊 Gelir Vergisi Hesaplaması</div>
-                        <p className="mb-3 text-gray-300">Kümülatif matrah (fatura KDV hariç - muhasebe) üzerinden <span className="font-semibold text-white">2025 Ücret Dışı Gelirler Tarifesi</span> ile hesaplanır.</p>
+                        <p className="mb-3 text-gray-300">
+                          Kümülatif matrah (fatura KDV hariç - muhasebe) üzerinden <span className="font-semibold text-white">2025 Ücret Dışı Gelirler Tarifesi</span> ile hesaplanır.
+                        </p>
+                        <div className="text-[11px] space-y-1.5 bg-slate-700/50 p-2 rounded">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Aylık matrah</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthlyTaxable, 'TRY')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Önceki kümülatif</span>
+                            <span className="font-semibold text-white">{formatCurrency(prevCumulativeTaxable, 'TRY')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Yeni kümülatif</span>
+                            <span className="font-semibold text-white">{formatCurrency(cumulativeTaxable, 'TRY')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Dilim / Oran</span>
+                            <span className="font-semibold text-white">{`${monthDataToShow.bracket.name} (%${monthDataToShow.bracket.rate})`}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-red-200 pt-1 border-t border-red-400/30">
+                            <span>Aylık vergi</span>
+                            <span>{formatCurrency(monthlyIncomeTaxTry, 'TRY')}</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 leading-relaxed">
+                            Formül: Vergi = Tarifede kümülatif vergi(Yeni kümülatif matrah) - Tarifede kümülatif vergi(Önceki kümülatif matrah).
+                          </p>
+                        </div>
                         <div className="text-[11px] space-y-1.5 bg-slate-700/50 p-2 rounded">
                           <div className="flex justify-between">
                             <span>• 0 - 158.000 TL</span>
@@ -681,6 +763,10 @@ function App() {
                             <span className="font-semibold text-red-400">%40</span>
                           </div>
                         </div>
+                        <div className="text-[10px] text-gray-300 mt-2 border-t border-red-400/30 pt-2 leading-relaxed">
+                          Matematiksel ifade: V<sub>ay</sub> = T(M<sub>prev</sub> + M<sub>ay</sub>) − T(M<sub>prev</sub>)<br />
+                          T(m): ilgili dilimdeki taban vergi + (m − dilim alt sınırı) × dilim oranı
+                        </div>
                         {/* Arrow */}
                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
                       </div>
@@ -699,11 +785,44 @@ function App() {
                     <div className="text-2xl font-bold text-neon-cyan">=</div>
 
                     {/* KDV Hariç Tutar */}
-                    <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-neon-cyan/30">
-                      <p className="text-xs text-green-400 mb-1">KDV Hariç Tutar</p>
-                      <p className="text-lg font-bold text-neon-cyan">
-                        {formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}
-                      </p>
+                    <div className="relative group">
+                      <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-neon-cyan/30 cursor-help">
+                        <p className="text-xs text-green-400 mb-1">KDV Hariç Tutar</p>
+                        <p className="text-lg font-bold text-neon-cyan">
+                          {formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}
+                        </p>
+                      </div>
+                      <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-neon-cyan/40">
+                        <div className="font-bold text-neon-cyan mb-2">🧾 KDV Hariç Tutar</div>
+                        <p className="text-gray-300 text-xs mb-2">Net + SGK + Muhasebe + Gelir Vergisi toplamıdır.</p>
+                        <div className="text-[11px] space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Net</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.netEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">SGK</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Gelir Vergisi</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.taxEur || 0, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Muhasebe</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.muhasebeEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-neon-cyan pt-1 border-t border-neon-cyan/30">
+                            <span>Toplam (EUR)</span>
+                            <span>{formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-neon-cyan">
+                            <span>Toplam (TL)</span>
+                            <span>{formatCurrency(monthDataToShow.brutBeforeVATTry || 0, 'TRY')}</span>
+                          </div>
+                        </div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
+                      </div>
                     </div>
 
                     <div className="text-lg font-bold text-gray-400">× 1.2</div>
@@ -711,11 +830,40 @@ function App() {
                     <div className="text-2xl font-bold text-green-400">=</div>
 
                     {/* KDV Dahil Tutar */}
-                    <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-green-500/30">
-                      <p className="text-xs text-green-400 mb-1">KDV Dahil Tutar</p>
-                      <p className="text-lg font-bold text-green-400">
-                        {formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}
-                      </p>
+                    <div className="relative group">
+                      <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-green-500/30 cursor-help">
+                        <p className="text-xs text-green-400 mb-1">KDV Dahil Tutar</p>
+                        <p className="text-lg font-bold text-green-400">
+                          {formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}
+                        </p>
+                      </div>
+                      <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-green-500/40">
+                        <div className="font-bold text-green-300 mb-2">🧮 KDV Dahil</div>
+                        <p className="text-gray-300 text-xs mb-2">KDV hariç tutara %20 KDV eklenmiş halidir.</p>
+                        <div className="text-[11px] space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">KDV Hariç</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">KDV (%20)</span>
+                            <span className="font-semibold text-green-200">{formatCurrency(kdvAmountEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-green-300 pt-1 border-t border-green-500/30">
+                            <span>Toplam (EUR)</span>
+                            <span>{formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold text-green-300">
+                            <span>Toplam (TL)</span>
+                            <span>{formatCurrency(monthDataToShow.totalWithVATTry || 0, 'TRY')}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-gray-400 pt-1">
+                            <span>KDV (TL)</span>
+                            <span className="text-green-200 font-semibold">{formatCurrency(kdvAmountTry, 'TRY')}</span>
+                          </div>
+                        </div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
+                      </div>
                     </div>
                   </div>
                 </div>
