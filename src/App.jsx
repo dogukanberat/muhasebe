@@ -69,6 +69,10 @@ const MONTH_OPTIONS = [
 const LS_KEY_START_MONTH = 'gvh_start_month';
 const LS_KEY_START_YEAR = 'gvh_start_year';
 const LS_KEY_BAGKUR_RATE = 'gvh_bagkur_rate';
+const LS_KEY_NET = 'gvh_monthly_net';
+const LS_KEY_CURRENCY = 'gvh_currency';
+const LS_KEY_MANUAL_RATE = 'gvh_manual_rate';
+const LS_KEY_TABLE_CURRENCY = 'gvh_table_currency';
 
 // Aylık brütü çözer: G - vergi - Bağkur = hedef net
 // Vergi, kümülatif matrah (önceki brüt - önceki Bağkur) üzerine eklenen yeni matrah (G - Bağkur) için hesaplanır
@@ -144,9 +148,11 @@ function App() {
   const [manualRate, setManualRate] = useState(''); // Manuel kur girişi
   const [startMonthIndex, setStartMonthIndex] = useState(0); // Şirket başlangıç ayı (0=Ocak)
   const [startYear, setStartYear] = useState(new Date().getFullYear()); // Şirket başlangıç yılı
-  const [bagkurRate, setBagkurRate] = useState(BAGKUR_DEFAULT_RATE); // Bağkur oranı
+  const [bagkurRate, setBagkurRate] = useState(BAGKUR_DISCOUNT_RATE); // Bağkur oranı (varsayılan %32)
   const [bagkurInfoOpen, setBagkurInfoOpen] = useState(false);
   const [calcYear, setCalcYear] = useState(new Date().getFullYear()); // Kur/vergi yılı
+  const autoCalcRequested = React.useRef(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   // Sabit muhasebe ücreti
   const MUHASEBE_AYLIK = 45; // EUR
@@ -164,6 +170,10 @@ function App() {
       const storedStart = window.localStorage.getItem(LS_KEY_START_MONTH);
       const storedRate = window.localStorage.getItem(LS_KEY_BAGKUR_RATE);
       const storedYear = window.localStorage.getItem(LS_KEY_START_YEAR);
+      const storedNet = window.localStorage.getItem(LS_KEY_NET);
+      const storedCurrency = window.localStorage.getItem(LS_KEY_CURRENCY);
+      const storedManualRate = window.localStorage.getItem(LS_KEY_MANUAL_RATE);
+      const storedTableCurrency = window.localStorage.getItem(LS_KEY_TABLE_CURRENCY);
       if (storedStart !== null) {
         const parsed = Number(storedStart);
         if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 11) {
@@ -182,6 +192,20 @@ function App() {
           setBagkurRate(parsedRate);
         }
       }
+      if (storedNet !== null) {
+        setMonthlyNetEur(storedNet);
+        if (!autoCalcRequested.current) autoCalcRequested.current = true;
+      }
+      if (storedCurrency === 'EUR' || storedCurrency === 'TRY') {
+        setIncomeCurrency(storedCurrency);
+      }
+      if (storedManualRate !== null) {
+        setManualRate(storedManualRate);
+      }
+      if (storedTableCurrency === 'EUR' || storedTableCurrency === 'TRY') {
+        setTableCurrency(storedTableCurrency);
+      }
+      setPrefsLoaded(true);
     }
     fetchExchangeRate();
     fetchMonthlyRates();
@@ -197,12 +221,27 @@ function App() {
 
   // Seçimleri localStorage'a yaz
   useEffect(() => {
+    if (!prefsLoaded) return;
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(LS_KEY_START_MONTH, String(startMonthIndex));
       window.localStorage.setItem(LS_KEY_START_YEAR, String(startYear));
       window.localStorage.setItem(LS_KEY_BAGKUR_RATE, String(bagkurRate));
     }
-  }, [startMonthIndex, startYear, bagkurRate]);
+  }, [startMonthIndex, startYear, bagkurRate, prefsLoaded]);
+
+  // Veriler geldiyse ve localStorage'dan net değer yüklendiyse otomatik hesapla
+  useEffect(() => {
+    const canAutoCalc = prefsLoaded
+      && autoCalcRequested.current
+      && monthlyRates.length > 0
+      && monthlyNetEur
+      && (exchangeRate || manualRate);
+    if (canAutoCalc) {
+      autoCalcRequested.current = false;
+      handleCalculate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthlyRates, exchangeRate, manualRate, prefsLoaded]);
 
   // TCMB XML'den EUR kuru çekme (doğrudan TCMB, dev ortamında Vite proxy yolu)
   const fetchTCMBRate = async (date) => {
@@ -603,6 +642,17 @@ function App() {
       yearlyMuhasebeTry: totals.muhasebeTry,
       yearlyMuhasebeEur: totals.muhasebeEur,
     });
+
+    // Seçimleri ve girdileri localStorage'a yaz
+    if (prefsLoaded && typeof window !== 'undefined') {
+      window.localStorage.setItem(LS_KEY_NET, String(monthlyNetEur));
+      window.localStorage.setItem(LS_KEY_CURRENCY, incomeCurrency);
+      window.localStorage.setItem(LS_KEY_MANUAL_RATE, manualRate);
+      window.localStorage.setItem(LS_KEY_START_MONTH, String(startMonthIndex));
+      window.localStorage.setItem(LS_KEY_START_YEAR, String(startYear));
+      window.localStorage.setItem(LS_KEY_BAGKUR_RATE, String(bagkurRate));
+      window.localStorage.setItem(LS_KEY_TABLE_CURRENCY, tableCurrency);
+    }
   };
 
   const displayByTableCurrency = (tryValue, eurValue) => {
@@ -628,21 +678,32 @@ function App() {
 
         {/* Input Card */}
         <div className="glass rounded-3xl p-6 md:p-8 mb-8 neon-glow-purple">
-          <h2 className="text-2xl font-bold mb-6 text-neon-purple">Gelir Bilgileri</h2>
+          <div className="flex flex-col gap-3 mb-6">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="text-2xl font-bold text-neon-purple">Gelir Bilgileri</h2>
+              <div className="flex flex-wrap gap-2 text-xs text-gray-300">
+                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-neon-purple/30">Kur yılı: {calcYear}</span>
+                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-orange-300/30">Bağkur: %{formatNumber(bagkurRate * 100, 2)}</span>
+                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-cyan-300/30">Muhasebe: {formatCurrency(MUHASEBE_AYLIK, 'EUR', 0)}</span>
+              </div>
+            </div>
+            <p className="text-sm text-gray-300">
+              Net geliri girin, kuruluş tarihini seçin; Bağkur oranını belirleyin. İlk faaliyet ayı otomatik %37,75, sonrakiler seçtiğiniz oranla hesaplanır.
+            </p>
+          </div>
 
-          <div className="mb-6">
+          <div className="grid md:grid-cols-2 gap-5">
             {/* Aylık Net Gelir (EUR) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Aylık Net Gelir *
-              </label>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-gray-400">Para birimi:</span>
+            <div className="glass border border-neon-purple/30 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-semibold text-white">
+                  Aylık Net Gelir *
+                </label>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setIncomeCurrency('EUR')}
-                    className={`px-3 py-1 rounded-full border transition-colors ${incomeCurrency === 'EUR'
+                    className={`px-3 py-1 rounded-full border text-xs transition-colors ${incomeCurrency === 'EUR'
                       ? 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan'
                       : 'border-gray-700 text-gray-300 hover:border-neon-cyan/60 hover:text-neon-cyan'
                     }`}
@@ -652,7 +713,7 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setIncomeCurrency('TRY')}
-                    className={`px-3 py-1 rounded-full border transition-colors ${incomeCurrency === 'TRY'
+                    className={`px-3 py-1 rounded-full border text-xs transition-colors ${incomeCurrency === 'TRY'
                       ? 'bg-neon-purple/20 border-neon-purple text-neon-purple'
                       : 'border-gray-700 text-gray-300 hover:border-neon-purple/60 hover:text-neon-purple'
                     }`}
@@ -665,60 +726,56 @@ function App() {
                 type="number"
                 value={monthlyNetEur}
                 onChange={(e) => setMonthlyNetEur(e.target.value)}
-                placeholder={incomeCurrency === 'EUR' ? 'Örn: 5000' : 'Örn: 180000'}
+                placeholder={incomeCurrency === 'EUR' ? 'Örn: 5.000' : 'Örn: 180.000'}
                 min="0"
                 step="0.01"
-                className="w-full px-4 py-3 bg-slate-800/50 border border-neon-purple/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-purple transition-all"
+                className="w-full px-4 py-3 bg-slate-800/60 border border-neon-purple/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-purple transition-all"
               />
-            </div>
-            {/* Şirket başlangıç ayı */}
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Şirketin Kurulduğu Ay
-              </label>
-              <select
-                value={startMonthIndex}
-                onChange={(e) => setStartMonthIndex(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-neon-cyan/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-neon-cyan transition-all"
-              >
-                {MONTH_OPTIONS.map((month, idx) => (
-                  <option key={month} value={idx}>{month}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-400 mt-1">
-                Hesaplamalar seçtiğiniz aydan itibaren başlatılır.
+              <p className="text-[11px] text-gray-400 mt-2">
+                Vergi, Bağkur ve muhasebe düşülmeden elinize geçen tutar. Para birimini yukarıdan değiştirebilirsiniz.
               </p>
             </div>
 
-            {/* Şirket başlangıç yılı */}
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Şirketin Kurulduğu Yıl
+            {/* Şirket başlangıç ayı ve yılı */}
+            <div className="glass border border-neon-cyan/30 rounded-2xl p-4">
+              <label className="block text-sm font-semibold text-white mb-2">
+                Kuruluş Tarihi (Ay & Yıl)
               </label>
-              <input
-                type="number"
-                value={startYear}
-                onChange={(e) => setStartYear(Number(e.target.value))}
-                min="2000"
-                step="1"
-                className="w-full px-4 py-3 bg-slate-800/50 border border-neon-cyan/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan transition-all"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                İlk ay (seçilen yıl ve ay) %37,75; sonraki yıllar/aylar seçili oranla devam eder.
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={startMonthIndex}
+                  onChange={(e) => setStartMonthIndex(Number(e.target.value))}
+                  className="w-full px-3 py-3 bg-slate-800/60 border border-neon-cyan/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-neon-cyan transition-all"
+                >
+                  {MONTH_OPTIONS.map((month, idx) => (
+                    <option key={month} value={idx}>{month}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  value={startYear}
+                  onChange={(e) => setStartYear(Number(e.target.value))}
+                  min="2000"
+                  step="1"
+                  className="w-full px-3 py-3 bg-slate-800/60 border border-neon-cyan/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan transition-all"
+                />
+              </div>
+              <p className="text-[11px] text-gray-400 mt-2">
+                İlk faaliyet ayı (aynı yıl içinde) %37,75; sonraki aylar seçtiğiniz Bağkur oranıyla hesaplanır.
               </p>
             </div>
 
             {/* Bağkur oranı seçimi */}
-            <div className="mt-4">
+            <div className="glass border border-orange-300/30 rounded-2xl p-4 md:col-span-2">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-semibold text-white">
                   Bağkur Oranı
                 </label>
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setBagkurInfoOpen((prev) => !prev)}
-                    className="w-6 h-6 rounded-full bg-slate-800 border border-orange-300/50 text-orange-200 text-xs font-bold flex items-center justify-center hover:border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                    className="w-7 h-7 rounded-full bg-slate-800 border border-orange-300/50 text-orange-200 text-xs font-bold flex items-center justify-center hover:border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-300"
                   >
                     ?
                   </button>
@@ -726,38 +783,47 @@ function App() {
                     <div className="absolute right-0 mt-2 w-80 bg-slate-900/95 border border-orange-400/30 rounded-lg p-4 shadow-xl text-xs z-50">
                       <div className="font-bold text-orange-200 mb-2">Bağkur prim indirimi</div>
                       <p className="text-gray-200 mb-2">
-                        Yeni kurulan şirkette ilk ay varsayılan oran %37,75 uygulanır. Sonraki aylarda %5 indirimle oran %32’ye düşer.
+                        Kuruluş yılındaki ilk ay %37,75. Şartları sağlarsanız sonraki aylarda indirimli %32 uygulanabilir.
                       </p>
                       <p className="text-gray-300 leading-relaxed">
-                        İndirim için: son ödeme vadesi geçmiş prim borcu bulunmamalı ve primler zamanında ödenmeli. Prim borçlarını yapılandırıp taksit ve cari primlerini düzenli ödeyenler de %5 indirimden yararlanır. Başvuru şartı yok; şartları sağlayanlar otomatik olarak faydalanır.
+                        Şartlar: vadesi geçmiş prim borcu olmaması, primlerin zamanında ödenmesi. Borcu yapılandırıp taksit ve cari primlerini düzenli ödeyenler de %5 indirimden yararlanır. Başvuru gerekmez; uygun olanlar otomatik faydalanır.
                       </p>
-                      <p className="text-[11px] text-orange-200 mt-2">Seçtiğiniz oran tüm hesaplamalara uygulanır.</p>
+                      <p className="text-[11px] text-orange-200 mt-2">Seçtiğiniz oran (ilk ay hariç) tüm hesaplamalara uygulanır.</p>
                     </div>
                   )}
                 </div>
               </div>
-              <select
-                value={bagkurRate}
-                onChange={(e) => setBagkurRate(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-slate-800/50 border border-orange-300/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-300 transition-all"
-              >
-                <option value={BAGKUR_DEFAULT_RATE}>%37,75 (standart / ilk ay)</option>
-                <option value={BAGKUR_DISCOUNT_RATE}>%32 (indirimli)</option>
-              </select>
-              <p className="text-xs text-gray-400 mt-1">
-                İndirimi seçerseniz hesaplamalar %32 oranıyla yapılır.
-              </p>
+              <div className="grid md:grid-cols-3 gap-3">
+                <select
+                  value={bagkurRate}
+                  onChange={(e) => setBagkurRate(Number(e.target.value))}
+                  className="w-full px-3 py-3 bg-slate-800/60 border border-orange-300/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-300 transition-all"
+                >
+                  <option value={BAGKUR_DEFAULT_RATE}>%37,75 (standart / ilk ay)</option>
+                  <option value={BAGKUR_DISCOUNT_RATE}>%32 (indirimli)</option>
+                </select>
+                <div className="md:col-span-2 flex flex-wrap gap-2 text-[11px] text-gray-300">
+                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">Tavan: {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}</span>
+                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">İlk ay: %37,75</span>
+                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">Seçili oran: %{formatNumber(bagkurRate * 100, 2)}</span>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Hesapla Butonu */}
-          <button
-            onClick={handleCalculate}
-            disabled={loading || !exchangeRate}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-blue-900"
-          >
-            {loading ? 'Yükleniyor...' : '📊 Hesapla'}
-          </button>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              onClick={handleCalculate}
+              disabled={loading || !exchangeRate}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-800 py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-blue-900"
+            >
+              {loading ? 'Yükleniyor...' : '📊 Hesapla'}
+            </button>
+              <div className="text-xs text-gray-400">
+              Kur yılı: {calcYear} · Başlangıç: {MONTH_OPTIONS[startMonthIndex]} {startYear} · Bağkur: %{formatNumber(bagkurRate * 100, 2)}
+              </div>
+          </div>
 
           {/* Hata Mesajı */}
           {error && (
