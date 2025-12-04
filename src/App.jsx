@@ -388,7 +388,7 @@ function App() {
   const vatMultiplierText = includeVat ? (1 + BASE_KDV_RATE).toFixed(2) : '1.00';
 
   // Sabit muhasebe ücreti
-  const MUHASEBE_AYLIK = 45; // EUR
+  const MUHASEBE_AYLIK = includeVat ? 45 : 54; // EUR
 
   const handleVerifyClick = (amountTry) => {
     const plain = Number.isFinite(amountTry)
