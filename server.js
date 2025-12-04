@@ -16,6 +16,7 @@ app.use(express.json());
 
 const CACHE_FILE = path.join(__dirname, 'tcmb-cache.json');
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 saat
+const DIST_DIR = path.join(__dirname, 'dist');
 
 // TCMB'den kur çek
 async function fetchTCMBRate(date) {
@@ -239,6 +240,14 @@ app.delete('/api/cache', async (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Frontend statik dosyalar
+app.use(express.static(DIST_DIR));
+
+// SPA fallback
+app.get('*', (req, res) => {
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
 app.listen(PORT, () => {

@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      target: app
+      args:
+        # Boş bırakırsanız UI API'yi aynı origin (/api) üzerinden çağırır.
+        VITE_API_URL: ""
+    environment:
+      - PORT=3001
+    ports:
+      - "8050:3001"
