@@ -661,17 +661,51 @@ function App() {
       : formatCurrency(tryValue, 'TRY');
   };
 
+  const handleManualRateBlur = () => {
+    if (results && monthlyNetEur) {
+      handleCalculate();
+    }
+  };
+
+  const renderRateCell = (row, className = '') => {
+    const canEditRate = row.isCurrent && new Date().getDate() < 20;
+    if (canEditRate) {
+      return (
+        <input
+          type="number"
+          value={manualRate || (row.rate ? row.rate : '')}
+          onChange={(e) => setManualRate(e.target.value)}
+          onBlur={handleManualRateBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.currentTarget.blur();
+            }
+          }}
+          placeholder="Kur giriniz"
+          min="0"
+          step="0.0001"
+          className={`w-24 px-2 py-1 bg-slate-800/50 border border-neon-cyan/30 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-neon-cyan ${className}`}
+        />
+      );
+    }
+    return (
+      <span className={className}>
+        {row.rate ? formatNumber(row.rate, 4) : '-'}
+      </span>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white p-3 sm:p-4 md:p-8">
       {/* Ana Container */}
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
         <header className="text-center mb-8 md:mb-12">
-          <h1 className="text-4xl md:text-6xl font-bold mb-3 bg-gradient-to-r from-blue-400 via-blue-600 to-blue-800 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-3 bg-gradient-to-r from-blue-400 via-blue-600 to-blue-800 bg-clip-text text-transparent">
             2025 Gelir Vergisi & Muhasebe Hesaplayıcı
           </h1>
-          <p className="text-lg md:text-xl text-gray-300">
+          <p className="text-base sm:text-lg md:text-xl text-gray-300">
             EUR net → TRY ve Ücret Dışı Gelir Vergisi Tarifesi
           </p>
         </header>
@@ -692,7 +726,7 @@ function App() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-5">
+          <div className="grid md:grid-cols-2 gap-4 md:gap-5">
             {/* Aylık Net Gelir (EUR) */}
             <div className="glass border border-neon-purple/30 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-2">
@@ -864,17 +898,17 @@ function App() {
                     <span>📊</span> Aylık Özet - {monthDataToShow.month} 2025
                   </h3>
 
-                  <div className="flex flex-wrap items-center justify-center gap-3">
-                    {/* Net Gelir */}
-                    <div className="relative group">
-                      <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
-                        <p className="text-xs text-gray-400 mb-1">Net Gelir</p>
-                        <p className="text-lg font-bold text-white">
-                          {formatCurrency(monthDataToShow.netEur, 'EUR')}
-                        </p>
-                      </div>
-                      <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-neon-cyan/30">
-                        <div className="font-bold text-neon-cyan mb-2">💰 Net Gelir Detayı</div>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {/* Net Gelir */}
+                <div className="relative group">
+                  <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
+                    <p className="text-xs text-gray-400 mb-1">Net Gelir</p>
+                    <p className="text-base sm:text-lg font-bold text-white">
+                      {formatCurrency(monthDataToShow.netEur, 'EUR')}
+                    </p>
+                  </div>
+                  <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-neon-cyan/30">
+                    <div className="font-bold text-neon-cyan mb-2">💰 Net Gelir Detayı</div>
                         <p className="text-gray-300 text-xs mb-2">Vergi, Bağkur ve muhasebe hariç hedeflenen net ödeme.</p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
@@ -932,7 +966,7 @@ function App() {
                     {/* Muhasebe */}
                     <div className="glass p-4 rounded-xl text-center min-w-[120px]">
                       <p className="text-xs text-blue-400 mb-1">Muhasebe</p>
-                      <p className="text-lg font-bold text-blue-400">
+                      <p className="text-base sm:text-lg font-bold text-blue-400">
                         {formatCurrency(monthDataToShow.muhasebeEur, 'EUR')}
                       </p>
                     </div>
@@ -943,7 +977,7 @@ function App() {
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
                         <p className="text-xs text-red-400 mb-1">Gelir Vergisi</p>
-                        <p className="text-lg font-bold text-red-400">
+                        <p className="text-base sm:text-lg font-bold text-red-400">
                           {formatCurrency(monthDataToShow.taxEur || 0, 'EUR')}
                         </p>
                       </div>
@@ -1129,87 +1163,126 @@ function App() {
                 </div>
               </div>
 
-              {/* Responsive tablo */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="py-3 px-2 text-xs font-semibold text-gray-300">Ay</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-cyan-300">Kur</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-gray-300">Vergi Dilimi</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-gray-300">Net ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-orange-300">Bağkur Prim ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-red-300">Gelir Vergisi ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-green-300">{`Muhasebe (${MUHASEBE_AYLIK} EUR)`}</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-yellow-300">Brüt Fatura KDV Hariç ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-blue-300">KDV %20 ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-purple-300">Toplam Fatura KDV Dahil ({tableCurrency})</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.monthlyRows?.map((row, index) => (
-                      <tr
-                        key={index}
-                        className="border-b border-gray-800 hover:bg-slate-800/30 transition-colors"
-                      >
-                        <td className="py-2 px-2 font-medium text-neon-cyan">{row.month}</td>
-                        <td className="py-2 px-2 text-cyan-300 text-xs">
-                          {row.isCurrent && new Date().getDate() < 20 ? (
-                            <input
-                              type="number"
-                              value={manualRate || (row.rate ? row.rate : '')}
-                              onChange={(e) => setManualRate(e.target.value)}
-                              onBlur={() => {
-                                if (results && monthlyNetEur) {
-                                  handleCalculate();
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.currentTarget.blur();
-                                }
-                              }}
-                              placeholder="Kur giriniz"
-                              min="0"
-                              step="0.0001"
-                              className="w-24 px-2 py-1 bg-slate-800/50 border border-neon-cyan/30 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-neon-cyan"
-                            />
-                          ) : (
-                            row.rate ? formatNumber(row.rate, 4) : '-'
-                          )}
-                        </td>
-                        <td className="py-2 px-2 text-xs text-gray-300">
-                          <span className="block font-semibold text-white">{`${row.bracket.name} (%${row.bracket.rate})`}</span>
-                          <span className="text-[10px] text-gray-500">{row.bracket.range}</span>
-                        </td>
-                        <td className="py-2 px-2">{displayByTableCurrency(row.netTry, row.netEur)}</td>
-                        <td className="py-2 px-2 text-orange-300">{displayByTableCurrency(row.bagkurTry, row.bagkurEur)}</td>
-                        <td className="py-2 px-2 text-red-300">{displayByTableCurrency(row.taxTry, row.taxEur)}</td>
-                        <td className="py-2 px-2 text-green-300">{displayByTableCurrency(row.muhasebeTry, row.muhasebeEur)}</td>
-                        <td className="py-2 px-2 font-bold text-yellow-300">{displayByTableCurrency(row.brutBeforeVATTry, row.brutBeforeVATEur)}</td>
-                        <td className="py-2 px-2 text-blue-300">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</td>
-                        <td className="py-2 px-2 font-bold text-purple-300">{displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</td>
+              {/* Mobil kartlar */}
+              <div className="md:hidden space-y-4">
+                {results.monthlyRows?.map((row, index) => (
+                  <div
+                    key={index}
+                    className="glass border border-slate-700 rounded-2xl p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-neon-cyan">{row.month} {calcYear}</p>
+                        <p className="text-[11px] text-gray-400 flex items-center gap-2">
+                          <span className="text-cyan-300 font-semibold">Kur:</span>
+                          {renderRateCell(row, 'text-white')}
+                        </p>
+                        <p className="text-[11px] text-gray-500">Kaynak: {row.source || '—'}</p>
+                      </div>
+                      <div className="px-3 py-2 rounded-xl bg-slate-800/70 border border-gray-700 text-[11px] text-right">
+                        <div className="font-semibold text-white">{row.bracket.name}</div>
+                        <div className="text-gray-400">%{row.bracket.rate}</div>
+                        <div className="text-[10px] text-gray-500 leading-snug">{row.bracket.range}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
+                        <p className="text-gray-400 text-[11px]">Net ({tableCurrency})</p>
+                        <p className="text-sm font-semibold text-white break-words">{displayByTableCurrency(row.netTry, row.netEur)}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
+                        <p className="text-orange-300 text-[11px]">Bağkur ({tableCurrency})</p>
+                        <p className="text-sm font-semibold text-orange-200 break-words">{displayByTableCurrency(row.bagkurTry, row.bagkurEur)}</p>
+                        <p className="text-[10px] text-gray-500">Oran: %{formatNumber((row.bagkurRateApplied || bagkurRate) * 100, 2)}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
+                        <p className="text-red-300 text-[11px]">Gelir Vergisi ({tableCurrency})</p>
+                        <p className="text-sm font-semibold text-red-200 break-words">{displayByTableCurrency(row.taxTry, row.taxEur)}</p>
+                        <p className="text-[10px] text-gray-500">Matrah: {formatCurrency(row.taxableTry, 'TRY')}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
+                        <p className="text-green-300 text-[11px]">Muhasebe ({MUHASEBE_AYLIK} EUR)</p>
+                        <p className="text-sm font-semibold text-green-200 break-words">{displayByTableCurrency(row.muhasebeTry, row.muhasebeEur)}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
+                        <p className="text-yellow-300 text-[11px]">Brüt Fatura (KDV Hariç)</p>
+                        <p className="text-sm font-semibold text-yellow-200 break-words">{displayByTableCurrency(row.brutBeforeVATTry, row.brutBeforeVATEur)}</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
+                        <p className="text-blue-300 text-[11px]">KDV %20</p>
+                        <p className="text-sm font-semibold text-blue-200 break-words">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</p>
+                        <p className="text-[10px] text-gray-500">Dahil toplam: {displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Masaüstü tablo */}
+              <div className="hidden md:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">Ay</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-cyan-300">Kur</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">Vergi Dilimi</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">Net ({tableCurrency})</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-orange-300">Bağkur Prim ({tableCurrency})</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-red-300">Gelir Vergisi ({tableCurrency})</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-green-300">{`Muhasebe (${MUHASEBE_AYLIK} EUR)`}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-yellow-300">Brüt Fatura KDV Hariç ({tableCurrency})</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-blue-300">KDV %20 ({tableCurrency})</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-purple-300">Toplam Fatura KDV Dahil ({tableCurrency})</th>
                       </tr>
-                    ))}
-                  </tbody>
-                  {/* Toplam satırı */}
-                  <tfoot>
-                    <tr className="border-t-2 border-neon-cyan">
-                      <td className="py-3 px-2 font-bold text-sm text-neon-cyan">TOPLAM</td>
-                      <td className="py-3 px-2 font-bold text-sm">-</td>
-                      <td className="py-3 px-2 font-bold text-sm text-white">
-                        {`${getTaxBracket(results.taxBase).name} (%${getTaxBracket(results.taxBase).rate})`}
-                      </td>
-                      <td className="py-3 px-2 font-bold text-sm">{displayByTableCurrency(results.yearlyNetTry, results.yearlyNetEur)}</td>
-                      <td className="py-3 px-2 font-bold text-sm text-orange-300">{displayByTableCurrency(results.yearlyBagkur, results.yearlyBagkurEur)}</td>
-                      <td className="py-3 px-2 font-bold text-sm text-red-300">{displayByTableCurrency(results.yearlyTax, results.yearlyTaxEur)}</td>
-                      <td className="py-3 px-2 font-bold text-sm text-green-300">{displayByTableCurrency(results.yearlyMuhasebeTry, results.yearlyMuhasebeEur)}</td>
-                      <td className="py-3 px-2 font-bold text-sm text-yellow-300">{displayByTableCurrency(results.brutInvoiceBeforeVAT, results.brutInvoiceBeforeVATEur)}</td>
-                      <td className="py-3 px-2 font-bold text-sm text-blue-300">{displayByTableCurrency(results.yearlyKdv, results.yearlyKdvEur)}</td>
-                      <td className="py-3 px-2 font-bold text-sm text-purple-300">{displayByTableCurrency(results.totalInvoiceWithVAT, results.totalInvoiceWithVATEur)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </thead>
+                    <tbody>
+                      {results.monthlyRows?.map((row, index) => (
+                        <tr
+                          key={index}
+                          className="border-b border-gray-800 hover:bg-slate-800/30 transition-colors"
+                        >
+                          <td className="py-2 px-2 font-medium text-neon-cyan">{row.month}</td>
+                          <td className="py-2 px-2 text-cyan-300 text-xs">
+                            {renderRateCell(row)}
+                          </td>
+                          <td className="py-2 px-2 text-xs text-gray-300">
+                            <span className="block font-semibold text-white">{`${row.bracket.name} (%${row.bracket.rate})`}</span>
+                            <span className="text-[10px] text-gray-500">{row.bracket.range}</span>
+                          </td>
+                          <td className="py-2 px-2">{displayByTableCurrency(row.netTry, row.netEur)}</td>
+                          <td className="py-2 px-2 text-orange-300">{displayByTableCurrency(row.bagkurTry, row.bagkurEur)}</td>
+                          <td className="py-2 px-2 text-red-300">{displayByTableCurrency(row.taxTry, row.taxEur)}</td>
+                          <td className="py-2 px-2 text-green-300">{displayByTableCurrency(row.muhasebeTry, row.muhasebeEur)}</td>
+                          <td className="py-2 px-2 font-bold text-yellow-300">{displayByTableCurrency(row.brutBeforeVATTry, row.brutBeforeVATEur)}</td>
+                          <td className="py-2 px-2 text-blue-300">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</td>
+                          <td className="py-2 px-2 font-bold text-purple-300">{displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {/* Toplam satırı */}
+                    <tfoot>
+                      <tr className="border-t-2 border-neon-cyan">
+                        <td className="py-3 px-2 font-bold text-sm text-neon-cyan">TOPLAM</td>
+                        <td className="py-3 px-2 font-bold text-sm">-</td>
+                        <td className="py-3 px-2 font-bold text-sm text-white">
+                          {`${getTaxBracket(results.taxBase).name} (%${getTaxBracket(results.taxBase).rate})`}
+                        </td>
+                        <td className="py-3 px-2 font-bold text-sm">{displayByTableCurrency(results.yearlyNetTry, results.yearlyNetEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-orange-300">{displayByTableCurrency(results.yearlyBagkur, results.yearlyBagkurEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-red-300">{displayByTableCurrency(results.yearlyTax, results.yearlyTaxEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-green-300">{displayByTableCurrency(results.yearlyMuhasebeTry, results.yearlyMuhasebeEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-yellow-300">{displayByTableCurrency(results.brutInvoiceBeforeVAT, results.brutInvoiceBeforeVATEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-blue-300">{displayByTableCurrency(results.yearlyKdv, results.yearlyKdvEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-purple-300">{displayByTableCurrency(results.totalInvoiceWithVAT, results.totalInvoiceWithVATEur)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
 
               {/* Bilgilendirme notu */}
