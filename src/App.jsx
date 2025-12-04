@@ -83,6 +83,10 @@ const MONTH_NAME_MAP = {
 
 const translations = {
   tr: {
+    vatToggleOn: 'KDV dahil et',
+    vatToggleOff: 'KDV hariç göster',
+    invoiceAmountLabel: 'Fatura Tutarı',
+    noteVatDisabled: 'KDV hesaplanmıyor. İsterseniz "KDV dahil et" ile ekleyebilirsiniz.',
     languageLabel: 'Dil',
     languageTR: 'TR',
     languageEN: 'EN',
@@ -137,7 +141,7 @@ const translations = {
     vatExclTooltipDesc: 'Net + Bağkur + Muhasebe + Gelir Vergisi toplamıdır.',
     vatInclLabel: 'KDV Dahil Tutar',
     vatInclTooltipTitle: '🧮 KDV Dahil',
-    vatInclTooltipDesc: 'KDV hariç tutara %20 KDV eklenmiş halidir.',
+    vatInclTooltipDesc: 'KDV hariç tutara %{vat} KDV eklenmiş halidir.',
     tableTitle: 'Aylık Detay Breakdown',
     tableCurrencyLabel: 'Tablo para birimi:',
     colMonth: 'Ay',
@@ -148,14 +152,14 @@ const translations = {
     colIncomeTax: 'Gelir Vergisi ({currency})',
     colAccounting: 'Muhasebe ({fee} EUR)',
     colGrossExcl: 'Brüt Fatura KDV Hariç ({currency})',
-    colVat: 'KDV %20 ({currency})',
+    colVat: 'KDV %{vat} ({currency})',
     colTotal: 'Toplam Fatura KDV Dahil ({currency})',
     sourceLabel: 'Kaynak',
     rateLabel: 'Kur',
     rateManualPlaceholder: 'Kur giriniz',
     rateInfoPrefix: 'Dahil toplam:',
     cardBracketRate: 'Oran',
-    noteGrossInvoice: '📄 Brüt Fatura: KDV hariç kesilecek tutardır; net + Bağkur + muhasebe giderleri + ilgili ay gelir vergisini içerir. KDV %20 ayrıca eklenir.',
+    noteGrossInvoice: '📄 Brüt Fatura: KDV hariç kesilecek tutardır; net + Bağkur + muhasebe giderleri + ilgili ay gelir vergisini içerir. KDV %{vat} ayrıca eklenir.',
     noteCumulative: '💡 Kümülatif: İlgili aya kadar biriken toplam (Net gelir + Bağkur + Muhasebe ücretleri).',
     noteCumulativeExample: 'Örnek: Mart ayı = (Ocak net + Bağkur + Muhasebe) + (Şubat net + Bağkur + Muhasebe) + (Mart net + Bağkur + Muhasebe)',
     noteBagkurDiscount: '🛡️ Bağkur indirimi: Kuruluş yılındaki ilk ay %37,75; sonraki aylarda şartları sağlarsanız %32 uygulanabilir (başvuru gerekmez).',
@@ -166,6 +170,10 @@ const translations = {
     footerLine3: 'Döviz kuru: TCMB (T.C. Merkez Bankası) | Doğukan Elbasan',
   },
   en: {
+    vatToggleOn: 'Include VAT',
+    vatToggleOff: 'Show excl. VAT',
+    invoiceAmountLabel: 'Invoice Amount',
+    noteVatDisabled: 'VAT is not applied. Click "Include VAT" to add it.',
     languageLabel: 'Language',
     languageTR: 'TR',
     languageEN: 'EN',
@@ -220,7 +228,7 @@ const translations = {
     vatExclTooltipDesc: 'Sum of Net + Bagkur + Accounting + Income Tax.',
     vatInclLabel: 'Amount incl. VAT',
     vatInclTooltipTitle: '🧮 Amount incl. VAT',
-    vatInclTooltipDesc: 'Adds 20% VAT on the amount excl. VAT.',
+    vatInclTooltipDesc: 'Adds {vat} VAT on the amount excl. VAT.',
     tableTitle: 'Monthly Breakdown',
     tableCurrencyLabel: 'Table currency:',
     colMonth: 'Month',
@@ -231,14 +239,14 @@ const translations = {
     colIncomeTax: 'Income Tax ({currency})',
     colAccounting: 'Accounting ({fee} EUR)',
     colGrossExcl: 'Invoice excl. VAT ({currency})',
-    colVat: 'VAT 20% ({currency})',
+    colVat: 'VAT {vat} ({currency})',
     colTotal: 'Invoice incl. VAT ({currency})',
     sourceLabel: 'Source',
     rateLabel: 'Rate',
     rateManualPlaceholder: 'Enter rate',
     rateInfoPrefix: 'Incl. total:',
     cardBracketRate: 'Rate',
-    noteGrossInvoice: '📄 Gross Invoice: amount to bill excluding VAT; includes net + Bagkur + accounting + that month\'s income tax. VAT 20% is added on top.',
+    noteGrossInvoice: '📄 Gross Invoice: amount to bill excluding VAT; includes net + Bagkur + accounting + that month\'s income tax. VAT {vat} is added on top.',
     noteCumulative: '💡 Cumulative: total up to the given month (Net income + Bagkur + Accounting fees).',
     noteCumulativeExample: 'Example: March = (Jan net + Bagkur + Accounting) + (Feb net + Bagkur + Accounting) + (Mar net + Bagkur + Accounting)',
     noteBagkurDiscount: '🛡️ Bagkur discount: first month in the incorporation year 37.75%; later months 32% if eligible (no application needed).',
@@ -259,6 +267,7 @@ const LS_KEY_MANUAL_RATE = 'gvh_manual_rate';
 const LS_KEY_TABLE_CURRENCY = 'gvh_table_currency';
 const LS_KEY_LANG = 'gvh_lang';
 const LS_KEY_PREF_VERSION = 'gvh_pref_version';
+const LS_KEY_INCLUDE_VAT = 'gvh_include_vat';
 const PREF_VERSION = '2';
 
 // Aylık brütü çözer: G - vergi - Bağkur = hedef net
@@ -341,23 +350,26 @@ function App() {
   const [calcYear, setCalcYear] = useState(new Date().getFullYear()); // Kur/vergi yılı
   const autoCalcRequested = React.useRef(false);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [includeVat, setIncludeVat] = useState(false);
 
   const translate = (key, vars = {}) => {
     const template = translations[lang]?.[key] ?? translations.tr[key] ?? key;
     return template.replace(/\{(\w+)\}/g, (_, v) => (vars?.[v] !== undefined ? vars[v] : `{${v}}`));
   };
 
+  // KDV oranı
+  const BASE_KDV_RATE = 0.20; // %20
+  const VAT_RATE_TEXT = `${(BASE_KDV_RATE * 100).toFixed(0)}%`;
+
   const getMonthLabel = (idx) => MONTH_LABELS[lang]?.[idx] ?? MONTH_LABELS.tr[idx] ?? '';
   const displayMonthName = (name) => (lang === 'en' ? (MONTH_NAME_MAP[name] || name) : name);
   const displayBracketName = (name) => (lang === 'en' ? name.replace('Dilim', 'Bracket') : name);
   const displayBracketRange = (range) => (lang === 'en' ? range.replaceAll('TL', 'TRY') : range);
   const errorMessage = errorKey ? translate(errorKey) : '';
+  const vatMultiplierText = includeVat ? (1 + BASE_KDV_RATE).toFixed(2) : '1.00';
 
   // Sabit muhasebe ücreti
   const MUHASEBE_AYLIK = 45; // EUR
-
-  // KDV oranı
-  const KDV_RATE = 0.20; // %20
 
   // Backend API URL
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -376,6 +388,7 @@ function App() {
       const storedManualRate = window.localStorage.getItem(LS_KEY_MANUAL_RATE);
       const storedTableCurrency = window.localStorage.getItem(LS_KEY_TABLE_CURRENCY);
       const storedLang = window.localStorage.getItem(LS_KEY_LANG);
+      const storedIncludeVat = window.localStorage.getItem(LS_KEY_INCLUDE_VAT);
       if (storedStart !== null) {
         const parsed = Number(storedStart);
         if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 11) {
@@ -410,12 +423,17 @@ function App() {
       if (!isPrefMismatch && (storedLang === 'en' || storedLang === 'tr')) {
         setLang(storedLang);
       }
+      if (!isPrefMismatch && storedIncludeVat !== null) {
+        setIncludeVat(storedIncludeVat === '1');
+      }
       if (isPrefMismatch) {
         window.localStorage.setItem(LS_KEY_PREF_VERSION, PREF_VERSION);
         window.localStorage.setItem(LS_KEY_LANG, 'en');
         window.localStorage.setItem(LS_KEY_TABLE_CURRENCY, 'EUR');
+        window.localStorage.setItem(LS_KEY_INCLUDE_VAT, '0');
         setLang('en');
         setTableCurrency('EUR');
+        setIncludeVat(false);
       }
       setPrefsLoaded(true);
     }
@@ -429,7 +447,7 @@ function App() {
       handleCalculate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startMonthIndex, bagkurRate]);
+  }, [startMonthIndex, bagkurRate, includeVat]);
 
   // Seçimleri localStorage'a yaz
   useEffect(() => {
@@ -441,8 +459,9 @@ function App() {
       window.localStorage.setItem(LS_KEY_LANG, lang);
       window.localStorage.setItem(LS_KEY_TABLE_CURRENCY, tableCurrency);
       window.localStorage.setItem(LS_KEY_PREF_VERSION, PREF_VERSION);
+      window.localStorage.setItem(LS_KEY_INCLUDE_VAT, includeVat ? '1' : '0');
     }
-  }, [startMonthIndex, startYear, bagkurRate, lang, tableCurrency, prefsLoaded]);
+  }, [startMonthIndex, startYear, bagkurRate, lang, tableCurrency, includeVat, prefsLoaded]);
 
   // Veriler geldiyse ve localStorage'dan net değer yüklendiyse otomatik hesapla
   useEffect(() => {
@@ -705,6 +724,8 @@ function App() {
     let cumulativeMatrah = 0;
     let cumulativeTax = 0;
 
+    const appliedKdvRate = includeVat ? BASE_KDV_RATE : 0;
+
     ratesForCalc.forEach((monthData, index) => {
       // İlk faaliyet ayı aynı yıl içindeyse %37,75; sonraki aylar seçilen oran
       const appliedBagkurRate = (startYear === calcYear && index === 0)
@@ -769,7 +790,7 @@ function App() {
       const cumTaxAfter = calculateTax(cumMatrahAfter);
       const bracket = getTaxBracket(cumMatrahAfter);
 
-      const kdvTry = invoiceNetTry * KDV_RATE;
+      const kdvTry = invoiceNetTry * appliedKdvRate;
       const kdvEur = kdvTry / monthRate;
       const totalWithVATTry = invoiceNetTry + kdvTry;
       const totalWithVATEur = totalWithVATTry / monthRate;
@@ -916,7 +937,7 @@ function App() {
       <div className="max-w-7xl mx-auto">
 
         {/* Dil seçimi */}
-        <div className="flex justify-end mb-4">
+        <div className="flex flex-wrap justify-end gap-2 mb-4">
           <div className="flex items-center gap-2 bg-slate-800/60 border border-slate-700 rounded-full px-3 py-2 text-xs">
             <span className="text-gray-300">{translate('languageLabel')}:</span>
             <div className="flex gap-1">
@@ -942,6 +963,13 @@ function App() {
               </button>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setIncludeVat((prev) => !prev)}
+            className={`text-xs px-3 py-2 rounded-full border transition-colors bg-slate-800/60 border-slate-700 hover:border-neon-cyan/50 hover:text-neon-cyan ${includeVat ? 'text-neon-cyan border-neon-cyan/60' : 'text-gray-300'}`}
+          >
+            {includeVat ? translate('vatToggleOff') : translate('vatToggleOn')}
+          </button>
         </div>
 
         {/* Header */}
@@ -1186,8 +1214,8 @@ function App() {
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-orange-400/30">
                         <div className="font-bold text-orange-300 mb-2">{translate('bagkurTooltipTitle')}</div>
                         <p className="text-gray-300 text-xs mb-2">
-                          {translate('bagkurTooltipDesc', { rate: bagkurRatePct, cap: formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2) })}
-                        </p>
+                        {translate('bagkurTooltipDesc', { rate: bagkurRatePct, cap: formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2) })}
+                      </p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
                             <span className="text-gray-400">{lang === 'en' ? 'Base (EUR)' : 'Matrah (EUR)'}</span>
@@ -1297,10 +1325,12 @@ function App() {
 
                     <div className="text-2xl font-bold text-neon-cyan">=</div>
 
-                    {/* KDV Hariç Tutar */}
+                    {/* Fatura Tutarı / KDV Hariç */}
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-neon-cyan/30 cursor-help">
-                        <p className="text-xs text-green-400 mb-1">{translate('vatExclLabel')}</p>
+                        <p className="text-xs text-green-400 mb-1">
+                          {includeVat ? translate('vatExclLabel') : translate('invoiceAmountLabel')}
+                        </p>
                         <p className="text-lg font-bold text-neon-cyan">
                           {formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}
                         </p>
@@ -1338,46 +1368,50 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="text-lg font-bold text-gray-400">× 1.2</div>
+                    {includeVat && (
+                      <>
+                        <div className="text-lg font-bold text-gray-400">× {vatMultiplierText}</div>
 
-                    <div className="text-2xl font-bold text-green-400">=</div>
+                        <div className="text-2xl font-bold text-green-400">=</div>
 
-                    {/* KDV Dahil Tutar */}
-                    <div className="relative group">
-                      <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-green-500/30 cursor-help">
-                        <p className="text-xs text-green-400 mb-1">{translate('vatInclLabel')}</p>
-                        <p className="text-lg font-bold text-green-400">
-                          {formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}
-                        </p>
-                      </div>
-                      <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-green-500/40">
-                        <div className="font-bold text-green-300 mb-2">{translate('vatInclTooltipTitle')}</div>
-                        <p className="text-gray-300 text-xs mb-2">{translate('vatInclTooltipDesc')}</p>
-                        <div className="text-[11px] space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">{translate('vatExclLabel')}</span>
-                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}</span>
+                        {/* KDV Dahil Tutar */}
+                        <div className="relative group">
+                          <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-green-500/30 cursor-help">
+                            <p className="text-xs text-green-400 mb-1">{translate('vatInclLabel')}</p>
+                            <p className="text-lg font-bold text-green-400">
+                              {formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}
+                            </p>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">{lang === 'en' ? 'VAT (20%)' : 'KDV (%20)'}</span>
-                            <span className="font-semibold text-green-200">{formatCurrency(kdvAmountEur, 'EUR')}</span>
-                          </div>
-                          <div className="flex justify-between font-semibold text-green-300 pt-1 border-t border-green-500/30">
-                            <span>{lang === 'en' ? 'Total (EUR)' : 'Toplam (EUR)'}</span>
-                            <span>{formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}</span>
-                          </div>
-                          <div className="flex justify-between font-semibold text-green-300">
-                            <span>{lang === 'en' ? 'Total (TRY)' : 'Toplam (TL)'}</span>
-                            <span>{formatCurrency(monthDataToShow.totalWithVATTry || 0, 'TRY')}</span>
-                          </div>
-                          <div className="flex justify-between text-[10px] text-gray-400 pt-1">
-                            <span>{lang === 'en' ? 'VAT (TRY)' : 'KDV (TL)'}</span>
-                            <span className="text-green-200 font-semibold">{formatCurrency(kdvAmountTry, 'TRY')}</span>
+                          <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-green-500/40">
+                            <div className="font-bold text-green-300 mb-2">{translate('vatInclTooltipTitle')}</div>
+                            <p className="text-gray-300 text-xs mb-2">{translate('vatInclTooltipDesc', { vat: VAT_RATE_TEXT })}</p>
+                            <div className="text-[11px] space-y-1">
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">{translate('vatExclLabel')}</span>
+                                <span className="font-semibold text-white">{formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">{lang === 'en' ? `VAT (${VAT_RATE_TEXT})` : `KDV (${VAT_RATE_TEXT})`}</span>
+                                <span className="font-semibold text-green-200">{formatCurrency(kdvAmountEur, 'EUR')}</span>
+                              </div>
+                              <div className="flex justify-between font-semibold text-green-300 pt-1 border-t border-green-500/30">
+                                <span>{lang === 'en' ? 'Total (EUR)' : 'Toplam (EUR)'}</span>
+                                <span>{formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}</span>
+                              </div>
+                              <div className="flex justify-between font-semibold text-green-300">
+                                <span>{lang === 'en' ? 'Total (TRY)' : 'Toplam (TL)'}</span>
+                                <span>{formatCurrency(monthDataToShow.totalWithVATTry || 0, 'TRY')}</span>
+                              </div>
+                              <div className="flex justify-between text-[10px] text-gray-400 pt-1">
+                                <span>{lang === 'en' ? 'VAT (TRY)' : 'KDV (TL)'}</span>
+                                <span className="text-green-200 font-semibold">{formatCurrency(kdvAmountTry, 'TRY')}</span>
+                              </div>
+                            </div>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
                           </div>
                         </div>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -1463,11 +1497,13 @@ function App() {
                         <p className="text-yellow-300 text-[11px]">{translate('colGrossExcl', { currency: tableCurrency })}</p>
                         <p className="text-sm font-semibold text-yellow-200 break-words">{displayByTableCurrency(row.brutBeforeVATTry, row.brutBeforeVATEur)}</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
-                        <p className="text-blue-300 text-[11px]">{translate('colVat', { currency: tableCurrency })}</p>
-                        <p className="text-sm font-semibold text-blue-200 break-words">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</p>
-                        <p className="text-[10px] text-gray-500">{translate('rateInfoPrefix')} {displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</p>
-                      </div>
+                      {includeVat && (
+                        <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
+                          <p className="text-blue-300 text-[11px]">{translate('colVat', { currency: tableCurrency, vat: VAT_RATE_TEXT })}</p>
+                          <p className="text-sm font-semibold text-blue-200 break-words">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</p>
+                          <p className="text-[10px] text-gray-500">{translate('rateInfoPrefix')} {displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1487,8 +1523,12 @@ function App() {
                         <th className="py-3 px-2 text-xs font-semibold text-red-300">{translate('colIncomeTax', { currency: tableCurrency })}</th>
                         <th className="py-3 px-2 text-xs font-semibold text-green-300">{translate('colAccounting', { fee: MUHASEBE_AYLIK })}</th>
                         <th className="py-3 px-2 text-xs font-semibold text-yellow-300">{translate('colGrossExcl', { currency: tableCurrency })}</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-blue-300">{translate('colVat', { currency: tableCurrency })}</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-purple-300">{translate('colTotal', { currency: tableCurrency })}</th>
+                        {includeVat && (
+                          <>
+                            <th className="py-3 px-2 text-xs font-semibold text-blue-300">{translate('colVat', { currency: tableCurrency, vat: VAT_RATE_TEXT })}</th>
+                            <th className="py-3 px-2 text-xs font-semibold text-purple-300">{translate('colTotal', { currency: tableCurrency })}</th>
+                          </>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -1510,8 +1550,12 @@ function App() {
                           <td className="py-2 px-2 text-red-300">{displayByTableCurrency(row.taxTry, row.taxEur)}</td>
                           <td className="py-2 px-2 text-green-300">{displayByTableCurrency(row.muhasebeTry, row.muhasebeEur)}</td>
                           <td className="py-2 px-2 font-bold text-yellow-300">{displayByTableCurrency(row.brutBeforeVATTry, row.brutBeforeVATEur)}</td>
-                          <td className="py-2 px-2 text-blue-300">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</td>
-                          <td className="py-2 px-2 font-bold text-purple-300">{displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</td>
+                          {includeVat && (
+                            <>
+                              <td className="py-2 px-2 text-blue-300">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</td>
+                              <td className="py-2 px-2 font-bold text-purple-300">{displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -1528,8 +1572,12 @@ function App() {
                         <td className="py-3 px-2 font-bold text-sm text-red-300">{displayByTableCurrency(results.yearlyTax, results.yearlyTaxEur)}</td>
                         <td className="py-3 px-2 font-bold text-sm text-green-300">{displayByTableCurrency(results.yearlyMuhasebeTry, results.yearlyMuhasebeEur)}</td>
                         <td className="py-3 px-2 font-bold text-sm text-yellow-300">{displayByTableCurrency(results.brutInvoiceBeforeVAT, results.brutInvoiceBeforeVATEur)}</td>
-                        <td className="py-3 px-2 font-bold text-sm text-blue-300">{displayByTableCurrency(results.yearlyKdv, results.yearlyKdvEur)}</td>
-                        <td className="py-3 px-2 font-bold text-sm text-purple-300">{displayByTableCurrency(results.totalInvoiceWithVAT, results.totalInvoiceWithVATEur)}</td>
+                        {includeVat && (
+                          <>
+                            <td className="py-3 px-2 font-bold text-sm text-blue-300">{displayByTableCurrency(results.yearlyKdv, results.yearlyKdvEur)}</td>
+                            <td className="py-3 px-2 font-bold text-sm text-purple-300">{displayByTableCurrency(results.totalInvoiceWithVAT, results.totalInvoiceWithVATEur)}</td>
+                          </>
+                        )}
                       </tr>
                     </tfoot>
                   </table>
@@ -1539,7 +1587,9 @@ function App() {
               {/* Bilgilendirme notu */}
               <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
                 <p className="text-sm text-yellow-300">
-                  {translate('noteGrossInvoice')}
+                  {includeVat
+                    ? translate('noteGrossInvoice', { vat: VAT_RATE_TEXT })
+                    : translate('noteVatDisabled')}
                 </p>
                 <p className="text-sm text-blue-300 mt-2">
                   {translate('noteCumulative')}
