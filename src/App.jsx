@@ -360,6 +360,7 @@ function App() {
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [includeVat, setIncludeVat] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
+  const [verifyPos, setVerifyPos] = useState({ top: 0, left: 0 });
 
   const translate = (key, vars = {}) => {
     const template = translations[lang]?.[key] ?? translations.tr[key] ?? key;
@@ -1450,7 +1451,7 @@ function App() {
             })()}
 
             {/* Aylık Detay Tablosu */}
-            <div className="glass rounded-3xl p-6 md:p-8 neon-glow-cyan relative overflow-visible">
+            <div className="glass rounded-3xl p-6 md:p-8 neon-glow-cyan relative overflow-visible z-10">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-neon-cyan flex items-center gap-2">
                   <span>📅</span> {translate('tableTitle')}
@@ -1622,7 +1623,15 @@ function App() {
                         <td className="py-3 px-2 font-bold text-sm text-yellow-300">
                           <div
                             className="relative inline-block z-30"
-                            onMouseEnter={() => setVerifyOpen(true)}
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const tooltipWidth = 256;
+                              const padding = 12;
+                              const left = Math.max(padding, Math.min(rect.right - tooltipWidth, window.innerWidth - tooltipWidth - padding));
+                              const top = rect.bottom + 8;
+                              setVerifyPos({ top, left });
+                              setVerifyOpen(true);
+                            }}
                             onMouseLeave={() => setVerifyOpen(false)}
                           >
                             <button
@@ -1632,18 +1641,6 @@ function App() {
                             >
                               {translate('verifyButtonLabel')}: {displayByTableCurrency(results.brutInvoiceBeforeVAT, results.brutInvoiceBeforeVATEur)}
                             </button>
-                            {verifyOpen && (
-                              <div className="absolute z-50 bg-slate-900/95 border border-yellow-400/30 rounded-lg p-3 text-[11px] text-gray-200 shadow-xl w-64 right-0 bottom-full mb-2">
-                                <div className="font-semibold text-yellow-200 mb-1">
-                                  {lang === 'en' ? 'Click copies amount & opens GIB' : 'Tıkla: tutar kopyalanır & GİB açılır'}
-                                </div>
-                                <div className="text-gray-200 mb-2">{translate('verifyTooltip')}</div>
-                                <div className="text-gray-300 mb-1">{translate('verifyTooltipExtra')}</div>
-                                <div className="text-red-400 font-extrabold">
-                                  {translate('verifyTooltipIncomeType')}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         </td>
                         {includeVat && (
@@ -1699,6 +1696,22 @@ function App() {
         </footer>
 
       </div>
+
+      {verifyOpen && (
+        <div
+          className="fixed z-[500] bg-slate-900/95 border border-yellow-400/30 rounded-lg p-3 text-[11px] text-gray-200 shadow-2xl w-64"
+          style={{ top: verifyPos.top, left: verifyPos.left }}
+        >
+          <div className="font-semibold text-yellow-200 mb-1">
+            {lang === 'en' ? 'Click copies amount & opens GIB' : 'Tıkla: tutar kopyalanır & GİB açılır'}
+          </div>
+          <div className="text-gray-200 mb-2">{translate('verifyTooltip')}</div>
+          <div className="text-gray-300 mb-1">{translate('verifyTooltipExtra')}</div>
+          <div className="text-red-400 font-extrabold">
+            {translate('verifyTooltipIncomeType')}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
