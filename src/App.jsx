@@ -258,6 +258,8 @@ const LS_KEY_CURRENCY = 'gvh_currency';
 const LS_KEY_MANUAL_RATE = 'gvh_manual_rate';
 const LS_KEY_TABLE_CURRENCY = 'gvh_table_currency';
 const LS_KEY_LANG = 'gvh_lang';
+const LS_KEY_PREF_VERSION = 'gvh_pref_version';
+const PREF_VERSION = '2';
 
 // Aylık brütü çözer: G - vergi - Bağkur = hedef net
 // Vergi, kümülatif matrah (önceki brüt - önceki Bağkur) üzerine eklenen yeni matrah (G - Bağkur) için hesaplanır
@@ -364,6 +366,8 @@ function App() {
   useEffect(() => {
     // LocalStorage'dan seçimleri yükle
     if (typeof window !== 'undefined') {
+      const storedPrefVersion = window.localStorage.getItem(LS_KEY_PREF_VERSION);
+      const isPrefMismatch = storedPrefVersion !== PREF_VERSION;
       const storedStart = window.localStorage.getItem(LS_KEY_START_MONTH);
       const storedRate = window.localStorage.getItem(LS_KEY_BAGKUR_RATE);
       const storedYear = window.localStorage.getItem(LS_KEY_START_YEAR);
@@ -400,11 +404,18 @@ function App() {
       if (storedManualRate !== null) {
         setManualRate(storedManualRate);
       }
-      if (storedTableCurrency === 'EUR' || storedTableCurrency === 'TRY') {
+      if (!isPrefMismatch && (storedTableCurrency === 'EUR' || storedTableCurrency === 'TRY')) {
         setTableCurrency(storedTableCurrency);
       }
-      if (storedLang === 'en' || storedLang === 'tr') {
+      if (!isPrefMismatch && (storedLang === 'en' || storedLang === 'tr')) {
         setLang(storedLang);
+      }
+      if (isPrefMismatch) {
+        window.localStorage.setItem(LS_KEY_PREF_VERSION, PREF_VERSION);
+        window.localStorage.setItem(LS_KEY_LANG, 'en');
+        window.localStorage.setItem(LS_KEY_TABLE_CURRENCY, 'EUR');
+        setLang('en');
+        setTableCurrency('EUR');
       }
       setPrefsLoaded(true);
     }
@@ -428,8 +439,10 @@ function App() {
       window.localStorage.setItem(LS_KEY_START_YEAR, String(startYear));
       window.localStorage.setItem(LS_KEY_BAGKUR_RATE, String(bagkurRate));
       window.localStorage.setItem(LS_KEY_LANG, lang);
+      window.localStorage.setItem(LS_KEY_TABLE_CURRENCY, tableCurrency);
+      window.localStorage.setItem(LS_KEY_PREF_VERSION, PREF_VERSION);
     }
-  }, [startMonthIndex, startYear, bagkurRate, lang, prefsLoaded]);
+  }, [startMonthIndex, startYear, bagkurRate, lang, tableCurrency, prefsLoaded]);
 
   // Veriler geldiyse ve localStorage'dan net değer yüklendiyse otomatik hesapla
   useEffect(() => {
