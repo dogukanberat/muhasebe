@@ -56,6 +56,16 @@ const STATIC_MONTH_RATES = [
   { month: 'Aralık', rate: 49.620 },
 ];
 
+// Bağkur oranları
+const BAGKUR_DEFAULT_RATE = 0.3775; // %37,75
+const BAGKUR_DISCOUNT_RATE = 0.32; // %32 indirimli
+const BAGKUR_CAP_TRY = 68264.49; // Aylık tavan
+
+const MONTH_OPTIONS = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+];
+
 // Aylık brütü çözer: G - vergi - Bağkur = hedef net
 // Vergi, kümülatif matrah (önceki brüt - önceki Bağkur) üzerine eklenen yeni matrah (G - Bağkur) için hesaplanır
 const solveMonthlyGrossForNet = (targetNet, prevMatrah, computeBagkur) => {
@@ -128,11 +138,12 @@ function App() {
   const [results, setResults] = useState(null);
   const [tableCurrency, setTableCurrency] = useState('TRY');
   const [manualRate, setManualRate] = useState(''); // Manuel kur girişi
+  const [startMonthIndex, setStartMonthIndex] = useState(0); // Şirket başlangıç ayı (0=Ocak)
+  const [bagkurRate, setBagkurRate] = useState(BAGKUR_DEFAULT_RATE); // Bağkur oranı
+  const [bagkurInfoOpen, setBagkurInfoOpen] = useState(false);
 
   // Sabit muhasebe ücreti
   const MUHASEBE_AYLIK = 54; // EUR
-  const BAGKUR_RATE = 0.3775; // %37,75
-  const BAGKUR_CAP_TRY = 68264.49; // Aylık tavan
 
   // KDV oranı
   const KDV_RATE = 0.20; // %20
@@ -145,6 +156,14 @@ function App() {
     fetchExchangeRate();
     fetchMonthlyRates();
   }, []);
+
+  // Başlangıç ayı değişirse ve sonuç varsa yeniden hesapla
+  useEffect(() => {
+    if (results && monthlyNetEur) {
+      handleCalculate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startMonthIndex, bagkurRate]);
 
   // TCMB XML'den EUR kuru çekme (doğrudan TCMB, dev ortamında Vite proxy yolu)
   const fetchTCMBRate = async (date) => {
@@ -320,7 +339,7 @@ function App() {
     const monthlyNetEurNum = incomeCurrency === 'EUR'
       ? netInput
       : (exchangeRate ? netInput / (exchangeRate || 1) : 0);
-    const computeBagkur = (netTry) => Math.min(netTry * BAGKUR_RATE, BAGKUR_CAP_TRY);
+    const computeBagkur = (netTry) => Math.min(netTry * bagkurRate, BAGKUR_CAP_TRY);
 
     // Manuel kur varsa onu kullan, yoksa backend'den gelen kuru kullan
     const effectiveRate = manualRate ? parseFloat(manualRate) : exchangeRate;
@@ -341,6 +360,13 @@ function App() {
           return monthData;
         });
       }
+    }
+
+    // Başlangıç ayından itibaren filtrele
+    ratesForCalc = ratesForCalc.slice(startMonthIndex);
+    if (!ratesForCalc.length) {
+      setError('Seçilen başlangıç ayı için kur verisi bulunamadı.');
+      return;
     }
 
     // Güncel ayın kurunu güncellenmiş ratesForCalc'tan al
@@ -405,12 +431,13 @@ function App() {
         const midCumTax = calculateTax(midCumMatrah);
         const midIncomeTax = midCumTax - cumulativeTax;
 
-        // SGK = Net × 37.75%
-        // Invoice = Net + SGK + Muhasebe + Tax
-        // Invoice = Net × 1.3775 + Muhasebe + Tax
-        // Net (tavan dikkate alınmadan) = (Invoice - Tax - Muhasebe) / 1.3775
-        const midNetUncapped = (mid - midIncomeTax - otherExpenses) / (1 + BAGKUR_RATE);
-        const midBagkurUncapped = midNetUncapped * BAGKUR_RATE;
+        // Bağkur = Net × oran (varsayılan %37,75 veya indirimli %32)
+        // Invoice = Net + Bağkur + Muhasebe + Tax
+        // Invoice = Net × (1 + oran) + Muhasebe + Tax
+        // Net (tavan dikkate alınmadan) = (Invoice - Tax - Muhasebe) / (1 + oran)
+        const bagkurFactor = 1 + bagkurRate;
+        const midNetUncapped = (mid - midIncomeTax - otherExpenses) / bagkurFactor;
+        const midBagkurUncapped = midNetUncapped * bagkurRate;
         const midBagkur = Math.min(midBagkurUncapped, BAGKUR_CAP_TRY);
         const midNet = mid - midIncomeTax - midBagkur - otherExpenses;
 
@@ -591,6 +618,65 @@ function App() {
                 className="w-full px-4 py-3 bg-slate-800/50 border border-neon-purple/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-purple transition-all"
               />
             </div>
+            {/* Şirket başlangıç ayı */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Şirketin Kurulduğu Ay
+              </label>
+              <select
+                value={startMonthIndex}
+                onChange={(e) => setStartMonthIndex(Number(e.target.value))}
+                className="w-full px-4 py-3 bg-slate-800/50 border border-neon-cyan/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-neon-cyan transition-all"
+              >
+                {MONTH_OPTIONS.map((month, idx) => (
+                  <option key={month} value={idx}>{month}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                Hesaplamalar seçtiğiniz aydan itibaren başlatılır.
+              </p>
+            </div>
+
+            {/* Bağkur oranı seçimi */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-300">
+                  Bağkur Oranı
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setBagkurInfoOpen((prev) => !prev)}
+                    className="w-6 h-6 rounded-full bg-slate-800 border border-orange-300/50 text-orange-200 text-xs font-bold flex items-center justify-center hover:border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                  >
+                    ?
+                  </button>
+                  {bagkurInfoOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-slate-900/95 border border-orange-400/30 rounded-lg p-4 shadow-xl text-xs z-50">
+                      <div className="font-bold text-orange-200 mb-2">Bağkur prim indirimi</div>
+                      <p className="text-gray-200 mb-2">
+                        Yeni kurulan şirkette ilk ay varsayılan oran %37,75 uygulanır. Sonraki aylarda %5 indirimle oran %32’ye düşer.
+                      </p>
+                      <p className="text-gray-300 leading-relaxed">
+                        İndirim için: son ödeme vadesi geçmiş prim borcu bulunmamalı ve primler zamanında ödenmeli. Prim borçlarını yapılandırıp taksit ve cari primlerini düzenli ödeyenler de %5 indirimden yararlanır. Başvuru şartı yok; şartları sağlayanlar otomatik olarak faydalanır.
+                      </p>
+                      <p className="text-[11px] text-orange-200 mt-2">Seçtiğiniz oran tüm hesaplamalara uygulanır.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <select
+                value={bagkurRate}
+                onChange={(e) => setBagkurRate(Number(e.target.value))}
+                className="w-full px-4 py-3 bg-slate-800/50 border border-orange-300/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-300 transition-all"
+              >
+                <option value={BAGKUR_DEFAULT_RATE}>%37,75 (standart / ilk ay)</option>
+                <option value={BAGKUR_DISCOUNT_RATE}>%32 (indirimli)</option>
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                İndirimi seçerseniz hesaplamalar %32 oranıyla yapılır.
+              </p>
+            </div>
           </div>
 
           {/* Hesapla Butonu */}
@@ -633,6 +719,7 @@ function App() {
                 .reduce((sum, row) => sum + (row.taxableTry || 0), 0);
               const prevCumulativeTaxable = cumulativeTaxable - monthlyTaxable;
               const monthlyIncomeTaxTry = monthDataToShow.taxTry || 0;
+              const bagkurRatePct = (bagkurRate * 100).toFixed(2);
 
               return (
                 <div className="glass rounded-3xl p-6 neon-glow-cyan">
@@ -651,7 +738,7 @@ function App() {
                       </div>
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-neon-cyan/30">
                         <div className="font-bold text-neon-cyan mb-2">💰 Net Gelir Detayı</div>
-                        <p className="text-gray-300 text-xs mb-2">Vergi, SGK ve muhasebe hariç hedeflenen net ödeme.</p>
+                        <p className="text-gray-300 text-xs mb-2">Vergi, Bağkur ve muhasebe hariç hedeflenen net ödeme.</p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
                             <span className="text-gray-400">EUR</span>
@@ -668,18 +755,18 @@ function App() {
 
                     <div className="text-2xl font-bold text-gray-400">+</div>
 
-                    {/* SGK Primi */}
+                    {/* Bağkur Primi */}
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
-                        <p className="text-xs text-orange-400 mb-1">SGK Primi</p>
+                        <p className="text-xs text-orange-400 mb-1">Bağkur Primi</p>
                         <p className="text-lg font-bold text-orange-400">
                           {formatCurrency(monthDataToShow.bagkurEur, 'EUR')}
                         </p>
                       </div>
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-orange-400/30">
-                        <div className="font-bold text-orange-300 mb-2">🛡️ SGK Primi Hesabı</div>
+                        <div className="font-bold text-orange-300 mb-2">🛡️ Bağkur Primi Hesabı</div>
                         <p className="text-gray-300 text-xs mb-2">
-                          Net tutar × %37,75 (tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) üzerinden hesaplanır.
+                          Net tutar × %{bagkurRatePct} (tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) üzerinden hesaplanır.
                         </p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
@@ -691,13 +778,13 @@ function App() {
                             <span className="font-semibold text-white">{formatCurrency(bagkurBaseTry, 'TRY')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">SGK (EUR)</span>
-                            <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">SGK (TL)</span>
-                            <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurTry, 'TRY')}</span>
-                          </div>
+                        <span className="text-gray-400">Bağkur (EUR)</span>
+                        <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Bağkur (TL)</span>
+                        <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurTry, 'TRY')}</span>
+                      </div>
                         </div>
                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
                       </div>
@@ -798,14 +885,14 @@ function App() {
                       </div>
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-neon-cyan/40">
                         <div className="font-bold text-neon-cyan mb-2">🧾 KDV Hariç Tutar</div>
-                        <p className="text-gray-300 text-xs mb-2">Net + SGK + Muhasebe + Gelir Vergisi toplamıdır.</p>
+                        <p className="text-gray-300 text-xs mb-2">Net + Bağkur + Muhasebe + Gelir Vergisi toplamıdır.</p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
                             <span className="text-gray-400">Net</span>
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.netEur, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">SGK</span>
+                            <span className="text-gray-400">Bağkur</span>
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between">
@@ -914,7 +1001,7 @@ function App() {
                       <th className="py-3 px-2 text-xs font-semibold text-cyan-300">Kur</th>
                       <th className="py-3 px-2 text-xs font-semibold text-gray-300">Vergi Dilimi</th>
                       <th className="py-3 px-2 text-xs font-semibold text-gray-300">Net ({tableCurrency})</th>
-                      <th className="py-3 px-2 text-xs font-semibold text-orange-300">SGK Prim ({tableCurrency})</th>
+                      <th className="py-3 px-2 text-xs font-semibold text-orange-300">Bağkur Prim ({tableCurrency})</th>
                       <th className="py-3 px-2 text-xs font-semibold text-red-300">Gelir Vergisi ({tableCurrency})</th>
                       <th className="py-3 px-2 text-xs font-semibold text-green-300">{`Muhasebe (${MUHASEBE_AYLIK} EUR)`}</th>
                       <th className="py-3 px-2 text-xs font-semibold text-yellow-300">Brüt Fatura KDV Hariç ({tableCurrency})</th>
@@ -999,11 +1086,14 @@ function App() {
                 <p className="text-xs text-blue-300 mt-1">
                   Örnek: Mart ayı = (Ocak net + Bağkur + Muhasebe) + (Şubat net + Bağkur + Muhasebe) + (Mart net + Bağkur + Muhasebe)
                 </p>
+                <p className="text-xs text-orange-200 mt-2">
+                  🛡️ <strong>Bağkur indirimi:</strong> İlk ay varsayılan oran %37,75; prim borcu yoksa ve primler düzenli ödenirse sonraki aylarda indirimli %32 uygulanabilir (başvuru gerekmez).
+                </p>
                 <p className="text-xs text-cyan-300 mt-2">
                   🌍 <strong>Kur:</strong> Her ayın 20'si kuru kullanılır. Bulunduğumuz ay 20'sine gelmediyse manuel kur girişi yapabilirsiniz.
                 </p>
                 <p className="text-xs text-orange-300 mt-2">
-                  ⚠️ <strong>Önemli:</strong> Gelir vergisi, fatura KDV hariç tutarın tamamının kümülatifi üzerinden hesaplanır. SGK primi vergi matrahından düşülmez.
+                  ⚠️ <strong>Önemli:</strong> Gelir vergisi, fatura KDV hariç tutarın tamamının kümülatifi üzerinden hesaplanır. Bağkur primi vergi matrahından düşülmez.
                 </p>
               </div>
             </div>
@@ -1013,13 +1103,13 @@ function App() {
         {/* Footer Bilgilendirme */}
         <footer className="mt-12 text-center text-sm text-gray-400 space-y-2">
           <p>
-            ⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve Bağkur prim oranına (%37,75, aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) göre yapılmıştır.
+            ⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve seçtiğiniz Bağkur prim oranına (%{formatNumber(bagkurRate * 100, 2)}, aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) göre yapılmıştır.
           </p>
           <p>
-            Matrah: fatura KDV hariç tutarın tamamı (SGK primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.
+            Matrah: fatura KDV hariç tutarın tamamı (Bağkur primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.
           </p>
           <p className="text-xs text-gray-500">
-            Döviz kuru: TCMB (T.C. Merkez Bankası) | Tasarım: Futuristik Glassmorphism UI
+            Döviz kuru: TCMB (T.C. Merkez Bankası) | Doğukan Elbasan
           </p>
         </footer>
 
