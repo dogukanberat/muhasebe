@@ -66,6 +66,10 @@ const MONTH_OPTIONS = [
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
 ];
 
+const LS_KEY_START_MONTH = 'gvh_start_month';
+const LS_KEY_START_YEAR = 'gvh_start_year';
+const LS_KEY_BAGKUR_RATE = 'gvh_bagkur_rate';
+
 // Aylık brütü çözer: G - vergi - Bağkur = hedef net
 // Vergi, kümülatif matrah (önceki brüt - önceki Bağkur) üzerine eklenen yeni matrah (G - Bağkur) için hesaplanır
 const solveMonthlyGrossForNet = (targetNet, prevMatrah, computeBagkur) => {
@@ -139,11 +143,13 @@ function App() {
   const [tableCurrency, setTableCurrency] = useState('TRY');
   const [manualRate, setManualRate] = useState(''); // Manuel kur girişi
   const [startMonthIndex, setStartMonthIndex] = useState(0); // Şirket başlangıç ayı (0=Ocak)
+  const [startYear, setStartYear] = useState(new Date().getFullYear()); // Şirket başlangıç yılı
   const [bagkurRate, setBagkurRate] = useState(BAGKUR_DEFAULT_RATE); // Bağkur oranı
   const [bagkurInfoOpen, setBagkurInfoOpen] = useState(false);
+  const [calcYear, setCalcYear] = useState(new Date().getFullYear()); // Kur/vergi yılı
 
   // Sabit muhasebe ücreti
-  const MUHASEBE_AYLIK = 54; // EUR
+  const MUHASEBE_AYLIK = 45; // EUR
 
   // KDV oranı
   const KDV_RATE = 0.20; // %20
@@ -153,6 +159,30 @@ function App() {
 
   // Döviz kuru çekme - Sayfa yüklendiğinde
   useEffect(() => {
+    // LocalStorage'dan seçimleri yükle
+    if (typeof window !== 'undefined') {
+      const storedStart = window.localStorage.getItem(LS_KEY_START_MONTH);
+      const storedRate = window.localStorage.getItem(LS_KEY_BAGKUR_RATE);
+      const storedYear = window.localStorage.getItem(LS_KEY_START_YEAR);
+      if (storedStart !== null) {
+        const parsed = Number(storedStart);
+        if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 11) {
+          setStartMonthIndex(parsed);
+        }
+      }
+      if (storedYear !== null) {
+        const parsedYear = Number(storedYear);
+        if (Number.isInteger(parsedYear) && parsedYear > 1900) {
+          setStartYear(parsedYear);
+        }
+      }
+      if (storedRate !== null) {
+        const parsedRate = Number(storedRate);
+        if (parsedRate > 0) {
+          setBagkurRate(parsedRate);
+        }
+      }
+    }
     fetchExchangeRate();
     fetchMonthlyRates();
   }, []);
@@ -164,6 +194,15 @@ function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startMonthIndex, bagkurRate]);
+
+  // Seçimleri localStorage'a yaz
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LS_KEY_START_MONTH, String(startMonthIndex));
+      window.localStorage.setItem(LS_KEY_START_YEAR, String(startYear));
+      window.localStorage.setItem(LS_KEY_BAGKUR_RATE, String(bagkurRate));
+    }
+  }, [startMonthIndex, startYear, bagkurRate]);
 
   // TCMB XML'den EUR kuru çekme (doğrudan TCMB, dev ortamında Vite proxy yolu)
   const fetchTCMBRate = async (date) => {
@@ -257,6 +296,9 @@ function App() {
 
       if (data.success && data.rates) {
         setMonthlyRates(data.rates);
+        if (data.year) {
+          setCalcYear(data.year);
+        }
         console.log('Aylık kurlar yüklendi (Backend):', data.rates);
         console.log('Cache bilgisi:', data.cachedAt ? `Son güncelleme: ${new Date(data.cachedAt).toLocaleString('tr-TR')}` : 'Yeni cache');
       } else {
@@ -276,6 +318,7 @@ function App() {
         source: 'Static'
       }));
       setMonthlyRates(staticRates);
+      setCalcYear(currentYear);
       console.warn('Backend erişilemedi, statik kurlar kullanılıyor');
     }
   };
@@ -339,7 +382,7 @@ function App() {
     const monthlyNetEurNum = incomeCurrency === 'EUR'
       ? netInput
       : (exchangeRate ? netInput / (exchangeRate || 1) : 0);
-    const computeBagkur = (netTry) => Math.min(netTry * bagkurRate, BAGKUR_CAP_TRY);
+    const computeBagkur = (netTry, rateForMonth = bagkurRate) => Math.min(netTry * rateForMonth, BAGKUR_CAP_TRY);
 
     // Manuel kur varsa onu kullan, yoksa backend'den gelen kuru kullan
     const effectiveRate = manualRate ? parseFloat(manualRate) : exchangeRate;
@@ -347,7 +390,11 @@ function App() {
     // ratesForCalc array'ini oluştur ve manuel kur varsa güncel ayı güncelle
     let ratesForCalc = monthlyRates.length === 12
       ? monthlyRates
-      : STATIC_MONTH_RATES;
+      : STATIC_MONTH_RATES.map((item) => ({
+        ...item,
+        isCurrent: false,
+        source: item.source || 'Static'
+      }));
 
     // Eğer manuel kur girilmişse, güncel ayın kurunu override et
     if (manualRate) {
@@ -363,7 +410,8 @@ function App() {
     }
 
     // Başlangıç ayından itibaren filtrele
-    ratesForCalc = ratesForCalc.slice(startMonthIndex);
+    const startIndexForYear = startYear < calcYear ? 0 : startMonthIndex;
+    ratesForCalc = ratesForCalc.slice(startIndexForYear);
     if (!ratesForCalc.length) {
       setError('Seçilen başlangıç ayı için kur verisi bulunamadı.');
       return;
@@ -404,6 +452,10 @@ function App() {
     let cumulativeTax = 0;
 
     ratesForCalc.forEach((monthData, index) => {
+      // İlk faaliyet ayı aynı yıl içindeyse %37,75; sonraki aylar seçilen oran
+      const appliedBagkurRate = (startYear === calcYear && index === 0)
+        ? BAGKUR_DEFAULT_RATE
+        : bagkurRate;
       const monthRate = monthRateFallback(monthData);
       const targetNetTry = incomeCurrency === 'EUR' ? netInput * monthRate : netInput;
       const targetNetEur = incomeCurrency === 'EUR'
@@ -435,9 +487,9 @@ function App() {
         // Invoice = Net + Bağkur + Muhasebe + Tax
         // Invoice = Net × (1 + oran) + Muhasebe + Tax
         // Net (tavan dikkate alınmadan) = (Invoice - Tax - Muhasebe) / (1 + oran)
-        const bagkurFactor = 1 + bagkurRate;
+        const bagkurFactor = 1 + appliedBagkurRate;
         const midNetUncapped = (mid - midIncomeTax - otherExpenses) / bagkurFactor;
-        const midBagkurUncapped = midNetUncapped * bagkurRate;
+        const midBagkurUncapped = midNetUncapped * appliedBagkurRate;
         const midBagkur = Math.min(midBagkurUncapped, BAGKUR_CAP_TRY);
         const midNet = mid - midIncomeTax - midBagkur - otherExpenses;
 
@@ -476,6 +528,7 @@ function App() {
         rate: monthRate,
         source: monthData.source || 'Unknown',
         isCurrent: monthData.isCurrent || false,
+        bagkurRateApplied: appliedBagkurRate,
         netTry: netAchievedTry,
         netEur: netAchievedTry / monthRate,
         bagkurTry,
@@ -637,6 +690,24 @@ function App() {
               </p>
             </div>
 
+            {/* Şirket başlangıç yılı */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Şirketin Kurulduğu Yıl
+              </label>
+              <input
+                type="number"
+                value={startYear}
+                onChange={(e) => setStartYear(Number(e.target.value))}
+                min="2000"
+                step="1"
+                className="w-full px-4 py-3 bg-slate-800/50 border border-neon-cyan/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan transition-all"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                İlk ay (seçilen yıl ve ay) %37,75; sonraki yıllar/aylar seçili oranla devam eder.
+              </p>
+            </div>
+
             {/* Bağkur oranı seçimi */}
             <div className="mt-4">
               <div className="flex items-center justify-between mb-2">
@@ -719,7 +790,7 @@ function App() {
                 .reduce((sum, row) => sum + (row.taxableTry || 0), 0);
               const prevCumulativeTaxable = cumulativeTaxable - monthlyTaxable;
               const monthlyIncomeTaxTry = monthDataToShow.taxTry || 0;
-              const bagkurRatePct = (bagkurRate * 100).toFixed(2);
+              const bagkurRatePct = ((monthDataToShow.bagkurRateApplied || bagkurRate) * 100).toFixed(2);
 
               return (
                 <div className="glass rounded-3xl p-6 neon-glow-cyan">
@@ -1087,7 +1158,7 @@ function App() {
                   Örnek: Mart ayı = (Ocak net + Bağkur + Muhasebe) + (Şubat net + Bağkur + Muhasebe) + (Mart net + Bağkur + Muhasebe)
                 </p>
                 <p className="text-xs text-orange-200 mt-2">
-                  🛡️ <strong>Bağkur indirimi:</strong> İlk ay varsayılan oran %37,75; prim borcu yoksa ve primler düzenli ödenirse sonraki aylarda indirimli %32 uygulanabilir (başvuru gerekmez).
+                  🛡️ <strong>Bağkur indirimi:</strong> Kuruluş yılındaki ilk ay %37,75; sonraki aylarda şartları sağlarsanız %32 uygulanabilir (başvuru gerekmez).
                 </p>
                 <p className="text-xs text-cyan-300 mt-2">
                   🌍 <strong>Kur:</strong> Her ayın 20'si kuru kullanılır. Bulunduğumuz ay 20'sine gelmediyse manuel kur girişi yapabilirsiniz.
