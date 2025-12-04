@@ -61,10 +61,194 @@ const BAGKUR_DEFAULT_RATE = 0.3775; // %37,75
 const BAGKUR_DISCOUNT_RATE = 0.32; // %32 indirimli
 const BAGKUR_CAP_TRY = 68264.49; // Aylık tavan
 
-const MONTH_OPTIONS = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-];
+const MONTH_LABELS = {
+  tr: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+};
+
+const MONTH_NAME_MAP = {
+  'Ocak': 'January',
+  'Şubat': 'February',
+  'Mart': 'March',
+  'Nisan': 'April',
+  'Mayıs': 'May',
+  'Haziran': 'June',
+  'Temmuz': 'July',
+  'Ağustos': 'August',
+  'Eylül': 'September',
+  'Ekim': 'October',
+  'Kasım': 'November',
+  'Aralık': 'December',
+};
+
+const translations = {
+  tr: {
+    languageLabel: 'Dil',
+    languageTR: 'TR',
+    languageEN: 'EN',
+    title: '2025 Gelir Vergisi & Muhasebe Hesaplayıcı',
+    subtitle: 'EUR net → TRY ve Ücret Dışı Gelir Vergisi Tarifesi',
+    incomeSectionTitle: 'Gelir Bilgileri',
+    incomeSectionInfo: 'Net geliri girin, kuruluş tarihini seçin; Bağkur oranını belirleyin. İlk faaliyet ayı otomatik %37,75, sonrakiler seçtiğiniz oranla hesaplanır.',
+    badgeYear: 'Kur yılı: {year}',
+    badgeBagkur: 'Bağkur: %{rate}',
+    badgeAccounting: 'Muhasebe: {fee}',
+    monthlyNetLabel: 'Aylık Net Gelir *',
+    monthlyNetPlaceholderEur: 'Örn: 5.000',
+    monthlyNetPlaceholderTry: 'Örn: 180.000',
+    monthlyNetDesc: 'Vergi, Bağkur ve muhasebe düşülmeden elinize geçen tutar. Para birimini yukarıdan değiştirebilirsiniz.',
+    startDateLabel: 'Kuruluş Tarihi (Ay & Yıl)',
+    startDateNote: 'İlk faaliyet ayı (aynı yıl içinde) %37,75; sonraki aylar seçtiğiniz Bağkur oranıyla hesaplanır.',
+    bagkurRateLabel: 'Bağkur Oranı',
+    bagkurInfoTitle: 'Bağkur prim indirimi',
+    bagkurInfoBody1: 'Kuruluş yılındaki ilk ay %37,75. Şartları sağlarsanız sonraki aylarda indirimli %32 uygulanabilir.',
+    bagkurInfoBody2: 'Şartlar: vadesi geçmiş prim borcu olmaması, primlerin zamanında ödenmesi. Borcu yapılandırıp taksit ve cari primlerini düzenli ödeyenler de %5 indirimden yararlanır. Başvuru gerekmez; uygun olanlar otomatik faydalanır.',
+    bagkurInfoFoot: 'Seçtiğiniz oran (ilk ay hariç) tüm hesaplamalara uygulanır.',
+    bagkurRateOptionDefault: '%37,75 (standart / ilk ay)',
+    bagkurRateOptionDiscount: '%32 (indirimli)',
+    bagkurCapLabel: 'Tavan: {cap}',
+    bagkurFirstMonthLabel: 'İlk ay: %37,75',
+    bagkurSelectedLabel: 'Seçili oran: %{rate}',
+    calculateButton: '📊 Hesapla',
+    loading: 'Yükleniyor...',
+    metaLine: 'Kur yılı: {calcYear} · Başlangıç: {startMonth} {startYear} · Bağkur: %{bagkur}',
+    errorInvalidIncome: 'Lütfen geçerli bir aylık net gelir girin.',
+    errorRateMissing: 'Döviz kuru yüklenemedi. Lütfen sayfayı yenileyin.',
+    errorNoRates: 'Seçilen başlangıç ayı için kur verisi bulunamadı.',
+    monthlySummaryTitle: 'Aylık Özet - {month} {year}',
+    netIncomeLabel: 'Net Gelir',
+    netTooltipTitle: '💰 Net Gelir Detayı',
+    netTooltipDesc: 'Vergi, Bağkur ve muhasebe hariç hedeflenen net ödeme.',
+    bagkurLabel: 'Bağkur Primi',
+    bagkurTooltipTitle: '🛡️ Bağkur Primi Hesabı',
+    bagkurTooltipDesc: 'Net tutar × %{rate} (tavan {cap}) üzerinden hesaplanır.',
+    accountingLabel: 'Muhasebe',
+    incomeTaxLabel: 'Gelir Vergisi',
+    incomeTaxTooltipTitle: '📊 Gelir Vergisi Hesaplaması',
+    incomeTaxTooltipDesc: 'Kümülatif matrah (fatura KDV hariç tutarın tamamı) üzerinden 2025 Ücret Dışı Gelirler Tarifesi ile hesaplanır.',
+    incomeTaxMonthlyBase: 'Aylık matrah',
+    incomeTaxPrev: 'Önceki kümülatif',
+    incomeTaxNew: 'Yeni kümülatif',
+    incomeTaxBracket: 'Dilim / Oran',
+    incomeTaxMonthly: 'Aylık vergi',
+    incomeTaxFormula: 'Formül: Vergi = Tarifede kümülatif vergi(Yeni kümülatif matrah) - Tarifede kümülatif vergi(Önceki kümülatif matrah).',
+    vatExclLabel: 'KDV Hariç Tutar',
+    vatExclTooltipTitle: '🧾 KDV Hariç Tutar',
+    vatExclTooltipDesc: 'Net + Bağkur + Muhasebe + Gelir Vergisi toplamıdır.',
+    vatInclLabel: 'KDV Dahil Tutar',
+    vatInclTooltipTitle: '🧮 KDV Dahil',
+    vatInclTooltipDesc: 'KDV hariç tutara %20 KDV eklenmiş halidir.',
+    tableTitle: 'Aylık Detay Breakdown',
+    tableCurrencyLabel: 'Tablo para birimi:',
+    colMonth: 'Ay',
+    colRate: 'Kur',
+    colTaxBracket: 'Vergi Dilimi',
+    colNet: 'Net ({currency})',
+    colBagkur: 'Bağkur Prim ({currency})',
+    colIncomeTax: 'Gelir Vergisi ({currency})',
+    colAccounting: 'Muhasebe ({fee} EUR)',
+    colGrossExcl: 'Brüt Fatura KDV Hariç ({currency})',
+    colVat: 'KDV %20 ({currency})',
+    colTotal: 'Toplam Fatura KDV Dahil ({currency})',
+    sourceLabel: 'Kaynak',
+    rateLabel: 'Kur',
+    rateManualPlaceholder: 'Kur giriniz',
+    rateInfoPrefix: 'Dahil toplam:',
+    cardBracketRate: 'Oran',
+    noteGrossInvoice: '📄 Brüt Fatura: KDV hariç kesilecek tutardır; net + Bağkur + muhasebe giderleri + ilgili ay gelir vergisini içerir. KDV %20 ayrıca eklenir.',
+    noteCumulative: '💡 Kümülatif: İlgili aya kadar biriken toplam (Net gelir + Bağkur + Muhasebe ücretleri).',
+    noteCumulativeExample: 'Örnek: Mart ayı = (Ocak net + Bağkur + Muhasebe) + (Şubat net + Bağkur + Muhasebe) + (Mart net + Bağkur + Muhasebe)',
+    noteBagkurDiscount: '🛡️ Bağkur indirimi: Kuruluş yılındaki ilk ay %37,75; sonraki aylarda şartları sağlarsanız %32 uygulanabilir (başvuru gerekmez).',
+    noteRateInfo: '🌍 Kur: Her ayın 20\'si kuru kullanılır. Bulunduğumuz ay 20\'sine gelmediyse manuel kur girişi yapabilirsiniz.',
+    noteImportant: '⚠️ Önemli: Gelir vergisi, fatura KDV hariç tutarın tamamının kümülatifi üzerinden hesaplanır. Bağkur primi vergi matrahından düşülmez.',
+    footerLine1: '⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve seçtiğiniz Bağkur prim oranına (%{rate}, aylık tavan {cap}) göre yapılmıştır.',
+    footerLine2: 'Matrah: fatura KDV hariç tutarın tamamı (Bağkur primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.',
+    footerLine3: 'Döviz kuru: TCMB (T.C. Merkez Bankası) | Doğukan Elbasan',
+  },
+  en: {
+    languageLabel: 'Language',
+    languageTR: 'TR',
+    languageEN: 'EN',
+    title: '2025 Income Tax & Accounting Calculator',
+    subtitle: 'EUR net → TRY and Non-Wage Income Tax Tariff',
+    incomeSectionTitle: 'Income Details',
+    incomeSectionInfo: 'Enter your net income, pick the incorporation date, and choose the Bagkur rate. First month is fixed at 37.75%, following months use your selection.',
+    badgeYear: 'Rate year: {year}',
+    badgeBagkur: 'Bagkur: %{rate}',
+    badgeAccounting: 'Accounting: {fee}',
+    monthlyNetLabel: 'Monthly Net Income *',
+    monthlyNetPlaceholderEur: 'e.g. 5,000',
+    monthlyNetPlaceholderTry: 'e.g. 180,000',
+    monthlyNetDesc: 'Amount you take home before income tax, Bagkur, and accounting. You can change currency above.',
+    startDateLabel: 'Incorporation Month & Year',
+    startDateNote: 'First activity month (same year) uses 37.75%; following months use the selected Bagkur rate.',
+    bagkurRateLabel: 'Bagkur Rate',
+    bagkurInfoTitle: 'Bagkur premium discount',
+    bagkurInfoBody1: 'First month in the incorporation year is 37.75%. If eligible, 32% discounted rate applies for later months.',
+    bagkurInfoBody2: 'Conditions: no overdue premiums and on-time payments. Those who restructured debt and keep current + installments paid can benefit automatically; no application needed.',
+    bagkurInfoFoot: 'Selected rate applies to all months except the first month in the first year.',
+    bagkurRateOptionDefault: '37.75% (standard / first month)',
+    bagkurRateOptionDiscount: '32% (discounted)',
+    bagkurCapLabel: 'Cap: {cap}',
+    bagkurFirstMonthLabel: 'First month: 37.75%',
+    bagkurSelectedLabel: 'Selected rate: %{rate}',
+    calculateButton: '📊 Calculate',
+    loading: 'Loading...',
+    metaLine: 'Rate year: {calcYear} · Start: {startMonth} {startYear} · Bagkur: %{bagkur}',
+    errorInvalidIncome: 'Please enter a valid monthly net income.',
+    errorRateMissing: 'Exchange rate could not be loaded. Please refresh the page.',
+    errorNoRates: 'No rate data found for the selected start month.',
+    monthlySummaryTitle: 'Monthly Summary - {month} {year}',
+    netIncomeLabel: 'Net Income',
+    netTooltipTitle: '💰 Net Income Detail',
+    netTooltipDesc: 'Target take-home amount before income tax, Bagkur, and accounting.',
+    bagkurLabel: 'Bagkur Premium',
+    bagkurTooltipTitle: '🛡️ Bagkur Premium Calculation',
+    bagkurTooltipDesc: 'Calculated as Net × %{rate} (cap {cap}).',
+    accountingLabel: 'Accounting',
+    incomeTaxLabel: 'Income Tax',
+    incomeTaxTooltipTitle: '📊 Income Tax Calculation',
+    incomeTaxTooltipDesc: 'Calculated on cumulative taxable base (invoice amount excl. VAT) using the 2025 non-wage income tariff.',
+    incomeTaxMonthlyBase: 'Monthly base',
+    incomeTaxPrev: 'Previous cumulative',
+    incomeTaxNew: 'New cumulative',
+    incomeTaxBracket: 'Bracket / Rate',
+    incomeTaxMonthly: 'Monthly tax',
+    incomeTaxFormula: 'Formula: Tax = tariff cumulative(New cumulative base) − tariff cumulative(Previous cumulative base).',
+    vatExclLabel: 'Amount excl. VAT',
+    vatExclTooltipTitle: '🧾 Amount excl. VAT',
+    vatExclTooltipDesc: 'Sum of Net + Bagkur + Accounting + Income Tax.',
+    vatInclLabel: 'Amount incl. VAT',
+    vatInclTooltipTitle: '🧮 Amount incl. VAT',
+    vatInclTooltipDesc: 'Adds 20% VAT on the amount excl. VAT.',
+    tableTitle: 'Monthly Breakdown',
+    tableCurrencyLabel: 'Table currency:',
+    colMonth: 'Month',
+    colRate: 'Rate',
+    colTaxBracket: 'Tax Bracket',
+    colNet: 'Net ({currency})',
+    colBagkur: 'Bagkur ({currency})',
+    colIncomeTax: 'Income Tax ({currency})',
+    colAccounting: 'Accounting ({fee} EUR)',
+    colGrossExcl: 'Invoice excl. VAT ({currency})',
+    colVat: 'VAT 20% ({currency})',
+    colTotal: 'Invoice incl. VAT ({currency})',
+    sourceLabel: 'Source',
+    rateLabel: 'Rate',
+    rateManualPlaceholder: 'Enter rate',
+    rateInfoPrefix: 'Incl. total:',
+    cardBracketRate: 'Rate',
+    noteGrossInvoice: '📄 Gross Invoice: amount to bill excluding VAT; includes net + Bagkur + accounting + that month\'s income tax. VAT 20% is added on top.',
+    noteCumulative: '💡 Cumulative: total up to the given month (Net income + Bagkur + Accounting fees).',
+    noteCumulativeExample: 'Example: March = (Jan net + Bagkur + Accounting) + (Feb net + Bagkur + Accounting) + (Mar net + Bagkur + Accounting)',
+    noteBagkurDiscount: '🛡️ Bagkur discount: first month in the incorporation year 37.75%; later months 32% if eligible (no application needed).',
+    noteRateInfo: '🌍 Rate: Uses the 20th day rate for each month. If current month is before the 20th, you can enter the rate manually.',
+    noteImportant: '⚠️ Important: Income tax is calculated on the full invoice amount excluding VAT (Bagkur premium is not deducted from the base).',
+    footerLine1: '⚠️ This calculation uses the 2025 non-wage income tax tariff and your selected Bagkur rate (%{rate}, monthly cap {cap}).',
+    footerLine2: 'Tax base: full invoice amount excluding VAT (Bagkur premium is not deducted). Consult your accountant for your exact situation.',
+    footerLine3: 'Exchange rate: CBRT (Central Bank of Türkiye) | Doğukan Elbasan',
+  },
+};
 
 const LS_KEY_START_MONTH = 'gvh_start_month';
 const LS_KEY_START_YEAR = 'gvh_start_year';
@@ -73,6 +257,7 @@ const LS_KEY_NET = 'gvh_monthly_net';
 const LS_KEY_CURRENCY = 'gvh_currency';
 const LS_KEY_MANUAL_RATE = 'gvh_manual_rate';
 const LS_KEY_TABLE_CURRENCY = 'gvh_table_currency';
+const LS_KEY_LANG = 'gvh_lang';
 
 // Aylık brütü çözer: G - vergi - Bağkur = hedef net
 // Vergi, kümülatif matrah (önceki brüt - önceki Bağkur) üzerine eklenen yeni matrah (G - Bağkur) için hesaplanır
@@ -136,15 +321,16 @@ const getTaxBracket = (income) => {
 
 function App() {
   // State yönetimi
+  const [lang, setLang] = useState('en');
   const [monthlyNetEur, setMonthlyNetEur] = useState('');
   const [incomeCurrency, setIncomeCurrency] = useState('EUR'); // EUR | TRY
   const [exchangeRate, setExchangeRate] = useState(null);
   const [rateDate, setRateDate] = useState('');
   const [monthlyRates, setMonthlyRates] = useState([]); // Her ayın kuru
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errorKey, setErrorKey] = useState('');
   const [results, setResults] = useState(null);
-  const [tableCurrency, setTableCurrency] = useState('TRY');
+  const [tableCurrency, setTableCurrency] = useState('EUR');
   const [manualRate, setManualRate] = useState(''); // Manuel kur girişi
   const [startMonthIndex, setStartMonthIndex] = useState(0); // Şirket başlangıç ayı (0=Ocak)
   const [startYear, setStartYear] = useState(new Date().getFullYear()); // Şirket başlangıç yılı
@@ -153,6 +339,17 @@ function App() {
   const [calcYear, setCalcYear] = useState(new Date().getFullYear()); // Kur/vergi yılı
   const autoCalcRequested = React.useRef(false);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  const translate = (key, vars = {}) => {
+    const template = translations[lang]?.[key] ?? translations.tr[key] ?? key;
+    return template.replace(/\{(\w+)\}/g, (_, v) => (vars?.[v] !== undefined ? vars[v] : `{${v}}`));
+  };
+
+  const getMonthLabel = (idx) => MONTH_LABELS[lang]?.[idx] ?? MONTH_LABELS.tr[idx] ?? '';
+  const displayMonthName = (name) => (lang === 'en' ? (MONTH_NAME_MAP[name] || name) : name);
+  const displayBracketName = (name) => (lang === 'en' ? name.replace('Dilim', 'Bracket') : name);
+  const displayBracketRange = (range) => (lang === 'en' ? range.replaceAll('TL', 'TRY') : range);
+  const errorMessage = errorKey ? translate(errorKey) : '';
 
   // Sabit muhasebe ücreti
   const MUHASEBE_AYLIK = 45; // EUR
@@ -174,6 +371,7 @@ function App() {
       const storedCurrency = window.localStorage.getItem(LS_KEY_CURRENCY);
       const storedManualRate = window.localStorage.getItem(LS_KEY_MANUAL_RATE);
       const storedTableCurrency = window.localStorage.getItem(LS_KEY_TABLE_CURRENCY);
+      const storedLang = window.localStorage.getItem(LS_KEY_LANG);
       if (storedStart !== null) {
         const parsed = Number(storedStart);
         if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 11) {
@@ -205,6 +403,9 @@ function App() {
       if (storedTableCurrency === 'EUR' || storedTableCurrency === 'TRY') {
         setTableCurrency(storedTableCurrency);
       }
+      if (storedLang === 'en' || storedLang === 'tr') {
+        setLang(storedLang);
+      }
       setPrefsLoaded(true);
     }
     fetchExchangeRate();
@@ -226,8 +427,9 @@ function App() {
       window.localStorage.setItem(LS_KEY_START_MONTH, String(startMonthIndex));
       window.localStorage.setItem(LS_KEY_START_YEAR, String(startYear));
       window.localStorage.setItem(LS_KEY_BAGKUR_RATE, String(bagkurRate));
+      window.localStorage.setItem(LS_KEY_LANG, lang);
     }
-  }, [startMonthIndex, startYear, bagkurRate, prefsLoaded]);
+  }, [startMonthIndex, startYear, bagkurRate, lang, prefsLoaded]);
 
   // Veriler geldiyse ve localStorage'dan net değer yüklendiyse otomatik hesapla
   useEffect(() => {
@@ -366,7 +568,7 @@ function App() {
   const fetchExchangeRate = async () => {
     try {
       setLoading(true);
-      setError('');
+      setErrorKey('');
 
       console.log('Güncel kur çekiliyor (Backend API)...');
 
@@ -402,20 +604,20 @@ function App() {
   // Hesaplama fonksiyonu
   const handleCalculate = () => {
     if (!monthlyNetEur || monthlyNetEur <= 0) {
-      setError('Lütfen geçerli bir aylık net gelir girin.');
+      setErrorKey('errorInvalidIncome');
       return;
     }
 
     if (incomeCurrency === 'EUR' && !exchangeRate) {
-      setError('Döviz kuru yüklenemedi. Lütfen sayfayı yenileyin.');
+      setErrorKey('errorRateMissing');
       return;
     }
 
-    setError('');
+    setErrorKey('');
 
     const netInput = parseFloat(monthlyNetEur);
     if (!Number.isFinite(netInput) || netInput <= 0) {
-      setError('Lütfen geçerli bir aylık net gelir girin.');
+      setErrorKey('errorInvalidIncome');
       return;
     }
     const monthlyNetEurNum = incomeCurrency === 'EUR'
@@ -452,7 +654,7 @@ function App() {
     const startIndexForYear = startYear < calcYear ? 0 : startMonthIndex;
     ratesForCalc = ratesForCalc.slice(startIndexForYear);
     if (!ratesForCalc.length) {
-      setError('Seçilen başlangıç ayı için kur verisi bulunamadı.');
+      setErrorKey('errorNoRates');
       return;
     }
 
@@ -681,7 +883,7 @@ function App() {
               e.currentTarget.blur();
             }
           }}
-          placeholder="Kur giriniz"
+          placeholder={translate('rateManualPlaceholder')}
           min="0"
           step="0.0001"
           className={`w-24 px-2 py-1 bg-slate-800/50 border border-neon-cyan/30 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-neon-cyan ${className}`}
@@ -700,13 +902,42 @@ function App() {
       {/* Ana Container */}
       <div className="max-w-7xl mx-auto">
 
+        {/* Dil seçimi */}
+        <div className="flex justify-end mb-4">
+          <div className="flex items-center gap-2 bg-slate-800/60 border border-slate-700 rounded-full px-3 py-2 text-xs">
+            <span className="text-gray-300">{translate('languageLabel')}:</span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setLang('tr')}
+                className={`px-2 py-1 rounded-full border transition-colors ${lang === 'tr'
+                  ? 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan'
+                  : 'border-gray-700 text-gray-300 hover:border-neon-cyan/60 hover:text-neon-cyan'
+                }`}
+              >
+                {translate('languageTR')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang('en')}
+                className={`px-2 py-1 rounded-full border transition-colors ${lang === 'en'
+                  ? 'bg-neon-purple/20 border-neon-purple text-neon-purple'
+                  : 'border-gray-700 text-gray-300 hover:border-neon-purple/60 hover:text-neon-purple'
+                }`}
+              >
+                {translate('languageEN')}
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Header */}
         <header className="text-center mb-8 md:mb-12">
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-3 bg-gradient-to-r from-blue-400 via-blue-600 to-blue-800 bg-clip-text text-transparent">
-            2025 Gelir Vergisi & Muhasebe Hesaplayıcı
+            {translate('title')}
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-gray-300">
-            EUR net → TRY ve Ücret Dışı Gelir Vergisi Tarifesi
+            {translate('subtitle')}
           </p>
         </header>
 
@@ -714,15 +945,15 @@ function App() {
         <div className="glass rounded-3xl p-6 md:p-8 mb-8 neon-glow-purple">
           <div className="flex flex-col gap-3 mb-6">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h2 className="text-2xl font-bold text-neon-purple">Gelir Bilgileri</h2>
+              <h2 className="text-2xl font-bold text-neon-purple">{translate('incomeSectionTitle')}</h2>
               <div className="flex flex-wrap gap-2 text-xs text-gray-300">
-                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-neon-purple/30">Kur yılı: {calcYear}</span>
-                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-orange-300/30">Bağkur: %{formatNumber(bagkurRate * 100, 2)}</span>
-                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-cyan-300/30">Muhasebe: {formatCurrency(MUHASEBE_AYLIK, 'EUR', 0)}</span>
+                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-neon-purple/30">{translate('badgeYear', { year: calcYear })}</span>
+                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-orange-300/30">{translate('badgeBagkur', { rate: formatNumber(bagkurRate * 100, 2) })}</span>
+                <span className="px-3 py-1 rounded-full bg-slate-800/70 border border-cyan-300/30">{translate('badgeAccounting', { fee: formatCurrency(MUHASEBE_AYLIK, 'EUR', 0) })}</span>
               </div>
             </div>
             <p className="text-sm text-gray-300">
-              Net geliri girin, kuruluş tarihini seçin; Bağkur oranını belirleyin. İlk faaliyet ayı otomatik %37,75, sonrakiler seçtiğiniz oranla hesaplanır.
+              {translate('incomeSectionInfo')}
             </p>
           </div>
 
@@ -731,7 +962,7 @@ function App() {
             <div className="glass border border-neon-purple/30 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-semibold text-white">
-                  Aylık Net Gelir *
+                  {translate('monthlyNetLabel')}
                 </label>
                 <div className="flex gap-2">
                   <button
@@ -760,20 +991,20 @@ function App() {
                 type="number"
                 value={monthlyNetEur}
                 onChange={(e) => setMonthlyNetEur(e.target.value)}
-                placeholder={incomeCurrency === 'EUR' ? 'Örn: 5.000' : 'Örn: 180.000'}
+                placeholder={incomeCurrency === 'EUR' ? translate('monthlyNetPlaceholderEur') : translate('monthlyNetPlaceholderTry')}
                 min="0"
                 step="0.01"
                 className="w-full px-4 py-3 bg-slate-800/60 border border-neon-purple/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-purple transition-all"
               />
               <p className="text-[11px] text-gray-400 mt-2">
-                Vergi, Bağkur ve muhasebe düşülmeden elinize geçen tutar. Para birimini yukarıdan değiştirebilirsiniz.
+                {translate('monthlyNetDesc')}
               </p>
             </div>
 
             {/* Şirket başlangıç ayı ve yılı */}
             <div className="glass border border-neon-cyan/30 rounded-2xl p-4">
               <label className="block text-sm font-semibold text-white mb-2">
-                Kuruluş Tarihi (Ay & Yıl)
+                {translate('startDateLabel')}
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <select
@@ -781,7 +1012,7 @@ function App() {
                   onChange={(e) => setStartMonthIndex(Number(e.target.value))}
                   className="w-full px-3 py-3 bg-slate-800/60 border border-neon-cyan/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-neon-cyan transition-all"
                 >
-                  {MONTH_OPTIONS.map((month, idx) => (
+                  {MONTH_LABELS[lang].map((month, idx) => (
                     <option key={month} value={idx}>{month}</option>
                   ))}
                 </select>
@@ -795,7 +1026,7 @@ function App() {
                 />
               </div>
               <p className="text-[11px] text-gray-400 mt-2">
-                İlk faaliyet ayı (aynı yıl içinde) %37,75; sonraki aylar seçtiğiniz Bağkur oranıyla hesaplanır.
+                {translate('startDateNote')}
               </p>
             </div>
 
@@ -803,7 +1034,7 @@ function App() {
             <div className="glass border border-orange-300/30 rounded-2xl p-4 md:col-span-2">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-semibold text-white">
-                  Bağkur Oranı
+                  {translate('bagkurRateLabel')}
                 </label>
                 <div className="relative">
                   <button
@@ -815,14 +1046,14 @@ function App() {
                   </button>
                   {bagkurInfoOpen && (
                     <div className="absolute right-0 mt-2 w-80 bg-slate-900/95 border border-orange-400/30 rounded-lg p-4 shadow-xl text-xs z-50">
-                      <div className="font-bold text-orange-200 mb-2">Bağkur prim indirimi</div>
+                      <div className="font-bold text-orange-200 mb-2">{translate('bagkurInfoTitle')}</div>
                       <p className="text-gray-200 mb-2">
-                        Kuruluş yılındaki ilk ay %37,75. Şartları sağlarsanız sonraki aylarda indirimli %32 uygulanabilir.
+                        {translate('bagkurInfoBody1')}
                       </p>
                       <p className="text-gray-300 leading-relaxed">
-                        Şartlar: vadesi geçmiş prim borcu olmaması, primlerin zamanında ödenmesi. Borcu yapılandırıp taksit ve cari primlerini düzenli ödeyenler de %5 indirimden yararlanır. Başvuru gerekmez; uygun olanlar otomatik faydalanır.
+                        {translate('bagkurInfoBody2')}
                       </p>
-                      <p className="text-[11px] text-orange-200 mt-2">Seçtiğiniz oran (ilk ay hariç) tüm hesaplamalara uygulanır.</p>
+                      <p className="text-[11px] text-orange-200 mt-2">{translate('bagkurInfoFoot')}</p>
                     </div>
                   )}
                 </div>
@@ -833,13 +1064,13 @@ function App() {
                   onChange={(e) => setBagkurRate(Number(e.target.value))}
                   className="w-full px-3 py-3 bg-slate-800/60 border border-orange-300/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-orange-300 transition-all"
                 >
-                  <option value={BAGKUR_DEFAULT_RATE}>%37,75 (standart / ilk ay)</option>
-                  <option value={BAGKUR_DISCOUNT_RATE}>%32 (indirimli)</option>
+                  <option value={BAGKUR_DEFAULT_RATE}>{translate('bagkurRateOptionDefault')}</option>
+                  <option value={BAGKUR_DISCOUNT_RATE}>{translate('bagkurRateOptionDiscount')}</option>
                 </select>
                 <div className="md:col-span-2 flex flex-wrap gap-2 text-[11px] text-gray-300">
-                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">Tavan: {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}</span>
-                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">İlk ay: %37,75</span>
-                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">Seçili oran: %{formatNumber(bagkurRate * 100, 2)}</span>
+                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">{translate('bagkurCapLabel', { cap: formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2) })}</span>
+                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">{translate('bagkurFirstMonthLabel')}</span>
+                  <span className="px-3 py-2 rounded-lg bg-slate-800/60 border border-orange-300/30">{translate('bagkurSelectedLabel', { rate: formatNumber(bagkurRate * 100, 2) })}</span>
                 </div>
               </div>
             </div>
@@ -852,17 +1083,22 @@ function App() {
               disabled={loading || !exchangeRate}
               className="w-full bg-gradient-to-r from-blue-600 to-blue-800 py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:from-blue-700 hover:to-blue-900"
             >
-              {loading ? 'Yükleniyor...' : '📊 Hesapla'}
+              {loading ? translate('loading') : translate('calculateButton')}
             </button>
               <div className="text-xs text-gray-400">
-              Kur yılı: {calcYear} · Başlangıç: {MONTH_OPTIONS[startMonthIndex]} {startYear} · Bağkur: %{formatNumber(bagkurRate * 100, 2)}
+              {translate('metaLine', {
+                calcYear,
+                startMonth: getMonthLabel(startMonthIndex),
+                startYear,
+                bagkur: formatNumber(bagkurRate * 100, 2),
+              })}
               </div>
           </div>
 
           {/* Hata Mesajı */}
-          {error && (
+          {errorMessage && (
             <div className="mt-4 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-center">
-              {error}
+              {errorMessage}
             </div>
           )}
         </div>
@@ -895,21 +1131,21 @@ function App() {
               return (
                 <div className="glass rounded-3xl p-6 neon-glow-cyan">
                   <h3 className="text-xl font-bold mb-6 text-neon-cyan flex items-center gap-2">
-                    <span>📊</span> Aylık Özet - {monthDataToShow.month} 2025
+                    <span>📊</span> {translate('monthlySummaryTitle', { month: displayMonthName(monthDataToShow.month), year: calcYear })}
                   </h3>
 
               <div className="flex flex-wrap items-center justify-center gap-3">
                 {/* Net Gelir */}
                 <div className="relative group">
                   <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
-                    <p className="text-xs text-gray-400 mb-1">Net Gelir</p>
+                    <p className="text-xs text-gray-400 mb-1">{translate('netIncomeLabel')}</p>
                     <p className="text-base sm:text-lg font-bold text-white">
                       {formatCurrency(monthDataToShow.netEur, 'EUR')}
                     </p>
                   </div>
                   <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-neon-cyan/30">
-                    <div className="font-bold text-neon-cyan mb-2">💰 Net Gelir Detayı</div>
-                        <p className="text-gray-300 text-xs mb-2">Vergi, Bağkur ve muhasebe hariç hedeflenen net ödeme.</p>
+                    <div className="font-bold text-neon-cyan mb-2">{translate('netTooltipTitle')}</div>
+                    <p className="text-gray-300 text-xs mb-2">{translate('netTooltipDesc')}</p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
                             <span className="text-gray-400">EUR</span>
@@ -929,31 +1165,31 @@ function App() {
                     {/* Bağkur Primi */}
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
-                        <p className="text-xs text-orange-400 mb-1">Bağkur Primi</p>
-                        <p className="text-lg font-bold text-orange-400">
+                        <p className="text-xs text-orange-400 mb-1">{translate('bagkurLabel')}</p>
+                        <p className="text-base sm:text-lg font-bold text-orange-400">
                           {formatCurrency(monthDataToShow.bagkurEur, 'EUR')}
                         </p>
                       </div>
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-orange-400/30">
-                        <div className="font-bold text-orange-300 mb-2">🛡️ Bağkur Primi Hesabı</div>
+                        <div className="font-bold text-orange-300 mb-2">{translate('bagkurTooltipTitle')}</div>
                         <p className="text-gray-300 text-xs mb-2">
-                          Net tutar × %{bagkurRatePct} (tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) üzerinden hesaplanır.
+                          {translate('bagkurTooltipDesc', { rate: bagkurRatePct, cap: formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2) })}
                         </p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Matrah (EUR)</span>
+                            <span className="text-gray-400">{lang === 'en' ? 'Base (EUR)' : 'Matrah (EUR)'}</span>
                             <span className="font-semibold text-white">{formatCurrency(bagkurBaseEur, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Matrah (TL)</span>
+                            <span className="text-gray-400">{lang === 'en' ? 'Base (TRY)' : 'Matrah (TL)'}</span>
                             <span className="font-semibold text-white">{formatCurrency(bagkurBaseTry, 'TRY')}</span>
                           </div>
                           <div className="flex justify-between">
-                        <span className="text-gray-400">Bağkur (EUR)</span>
+                        <span className="text-gray-400">{lang === 'en' ? 'Bagkur (EUR)' : 'Bağkur (EUR)'}</span>
                         <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Bağkur (TL)</span>
+                        <span className="text-gray-400">{lang === 'en' ? 'Bagkur (TRY)' : 'Bağkur (TL)'}</span>
                         <span className="font-semibold text-orange-200">{formatCurrency(monthDataToShow.bagkurTry, 'TRY')}</span>
                       </div>
                         </div>
@@ -965,7 +1201,7 @@ function App() {
 
                     {/* Muhasebe */}
                     <div className="glass p-4 rounded-xl text-center min-w-[120px]">
-                      <p className="text-xs text-blue-400 mb-1">Muhasebe</p>
+                      <p className="text-xs text-blue-400 mb-1">{translate('accountingLabel')}</p>
                       <p className="text-base sm:text-lg font-bold text-blue-400">
                         {formatCurrency(monthDataToShow.muhasebeEur, 'EUR')}
                       </p>
@@ -976,7 +1212,7 @@ function App() {
                     {/* Gelir Vergisi */}
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
-                        <p className="text-xs text-red-400 mb-1">Gelir Vergisi</p>
+                        <p className="text-xs text-red-400 mb-1">{translate('incomeTaxLabel')}</p>
                         <p className="text-base sm:text-lg font-bold text-red-400">
                           {formatCurrency(monthDataToShow.taxEur || 0, 'EUR')}
                         </p>
@@ -984,33 +1220,33 @@ function App() {
 
                       {/* Tooltip */}
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-red-400/30">
-                        <div className="font-bold text-red-400 mb-2">📊 Gelir Vergisi Hesaplaması</div>
+                        <div className="font-bold text-red-400 mb-2">{translate('incomeTaxTooltipTitle')}</div>
                         <p className="mb-3 text-gray-300">
-                          Kümülatif matrah (fatura KDV hariç tutarın tamamı) üzerinden <span className="font-semibold text-white">2025 Ücret Dışı Gelirler Tarifesi</span> ile hesaplanır.
+                          {translate('incomeTaxTooltipDesc')}
                         </p>
                         <div className="text-[11px] space-y-1.5 bg-slate-700/50 p-2 rounded">
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Aylık matrah</span>
+                            <span className="text-gray-400">{translate('incomeTaxMonthlyBase')}</span>
                             <span className="font-semibold text-white">{formatCurrency(monthlyTaxable, 'TRY')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Önceki kümülatif</span>
+                            <span className="text-gray-400">{translate('incomeTaxPrev')}</span>
                             <span className="font-semibold text-white">{formatCurrency(prevCumulativeTaxable, 'TRY')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Yeni kümülatif</span>
+                            <span className="text-gray-400">{translate('incomeTaxNew')}</span>
                             <span className="font-semibold text-white">{formatCurrency(cumulativeTaxable, 'TRY')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Dilim / Oran</span>
-                            <span className="font-semibold text-white">{`${monthDataToShow.bracket.name} (%${monthDataToShow.bracket.rate})`}</span>
+                            <span className="text-gray-400">{translate('incomeTaxBracket')}</span>
+                            <span className="font-semibold text-white">{`${displayBracketName(monthDataToShow.bracket.name)} (%${monthDataToShow.bracket.rate})`}</span>
                           </div>
                           <div className="flex justify-between font-semibold text-red-200 pt-1 border-t border-red-400/30">
-                            <span>Aylık vergi</span>
+                            <span>{translate('incomeTaxMonthly')}</span>
                             <span>{formatCurrency(monthlyIncomeTaxTry, 'TRY')}</span>
                           </div>
                           <p className="text-[10px] text-gray-400 leading-relaxed">
-                            Formül: Vergi = Tarifede kümülatif vergi(Yeni kümülatif matrah) - Tarifede kümülatif vergi(Önceki kümülatif matrah).
+                            {translate('incomeTaxFormula')}
                           </p>
                         </div>
                         <div className="text-[11px] space-y-1.5 bg-slate-700/50 p-2 rounded">
@@ -1036,8 +1272,10 @@ function App() {
                           </div>
                         </div>
                         <div className="text-[10px] text-gray-300 mt-2 border-t border-red-400/30 pt-2 leading-relaxed">
-                          Matematiksel ifade: V<sub>ay</sub> = T(M<sub>prev</sub> + M<sub>ay</sub>) − T(M<sub>prev</sub>)<br />
-                          T(m): ilgili dilimdeki taban vergi + (m − dilim alt sınırı) × dilim oranı
+                          {lang === 'en' ? 'Mathematical form:' : 'Matematiksel ifade:'} V<sub>ay</sub> = T(M<sub>prev</sub> + M<sub>ay</sub>) − T(M<sub>prev</sub>)<br />
+                          {lang === 'en'
+                            ? 'T(m): base tax of the bracket + (m − bracket lower bound) × bracket rate'
+                            : 'T(m): ilgili dilimdeki taban vergi + (m − dilim alt sınırı) × dilim oranı'}
                         </div>
                         {/* Arrow */}
                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800/95"></div>
@@ -1049,37 +1287,37 @@ function App() {
                     {/* KDV Hariç Tutar */}
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-neon-cyan/30 cursor-help">
-                        <p className="text-xs text-green-400 mb-1">KDV Hariç Tutar</p>
+                        <p className="text-xs text-green-400 mb-1">{translate('vatExclLabel')}</p>
                         <p className="text-lg font-bold text-neon-cyan">
                           {formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}
                         </p>
                       </div>
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-neon-cyan/40">
-                        <div className="font-bold text-neon-cyan mb-2">🧾 KDV Hariç Tutar</div>
-                        <p className="text-gray-300 text-xs mb-2">Net + Bağkur + Muhasebe + Gelir Vergisi toplamıdır.</p>
+                        <div className="font-bold text-neon-cyan mb-2">{translate('vatExclTooltipTitle')}</div>
+                        <p className="text-gray-300 text-xs mb-2">{translate('vatExclTooltipDesc')}</p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Net</span>
+                            <span className="text-gray-400">{translate('netIncomeLabel')}</span>
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.netEur, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Bağkur</span>
+                            <span className="text-gray-400">{translate('bagkurLabel')}</span>
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Muhasebe</span>
+                            <span className="text-gray-400">{translate('accountingLabel')}</span>
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.muhasebeEur, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Gelir Vergisi</span>
+                            <span className="text-gray-400">{translate('incomeTaxLabel')}</span>
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.taxEur || 0, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between font-semibold text-neon-cyan pt-1 border-t border-neon-cyan/30">
-                            <span>Toplam (EUR)</span>
+                            <span>{lang === 'en' ? 'Total (EUR)' : 'Toplam (EUR)'}</span>
                             <span>{formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between font-semibold text-neon-cyan">
-                            <span>Toplam (TL)</span>
+                            <span>{lang === 'en' ? 'Total (TRY)' : 'Toplam (TL)'}</span>
                             <span>{formatCurrency(monthDataToShow.brutBeforeVATTry || 0, 'TRY')}</span>
                           </div>
                         </div>
@@ -1094,33 +1332,33 @@ function App() {
                     {/* KDV Dahil Tutar */}
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[140px] border-2 border-green-500/30 cursor-help">
-                        <p className="text-xs text-green-400 mb-1">KDV Dahil Tutar</p>
+                        <p className="text-xs text-green-400 mb-1">{translate('vatInclLabel')}</p>
                         <p className="text-lg font-bold text-green-400">
                           {formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}
                         </p>
                       </div>
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 border border-green-500/40">
-                        <div className="font-bold text-green-300 mb-2">🧮 KDV Dahil</div>
-                        <p className="text-gray-300 text-xs mb-2">KDV hariç tutara %20 KDV eklenmiş halidir.</p>
+                        <div className="font-bold text-green-300 mb-2">{translate('vatInclTooltipTitle')}</div>
+                        <p className="text-gray-300 text-xs mb-2">{translate('vatInclTooltipDesc')}</p>
                         <div className="text-[11px] space-y-1">
                           <div className="flex justify-between">
-                            <span className="text-gray-400">KDV Hariç</span>
+                            <span className="text-gray-400">{translate('vatExclLabel')}</span>
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.brutBeforeVATEur || 0, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">KDV (%20)</span>
+                            <span className="text-gray-400">{lang === 'en' ? 'VAT (20%)' : 'KDV (%20)'}</span>
                             <span className="font-semibold text-green-200">{formatCurrency(kdvAmountEur, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between font-semibold text-green-300 pt-1 border-t border-green-500/30">
-                            <span>Toplam (EUR)</span>
+                            <span>{lang === 'en' ? 'Total (EUR)' : 'Toplam (EUR)'}</span>
                             <span>{formatCurrency(monthDataToShow.totalWithVATEur || 0, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between font-semibold text-green-300">
-                            <span>Toplam (TL)</span>
+                            <span>{lang === 'en' ? 'Total (TRY)' : 'Toplam (TL)'}</span>
                             <span>{formatCurrency(monthDataToShow.totalWithVATTry || 0, 'TRY')}</span>
                           </div>
                           <div className="flex justify-between text-[10px] text-gray-400 pt-1">
-                            <span>KDV (TL)</span>
+                            <span>{lang === 'en' ? 'VAT (TRY)' : 'KDV (TL)'}</span>
                             <span className="text-green-200 font-semibold">{formatCurrency(kdvAmountTry, 'TRY')}</span>
                           </div>
                         </div>
@@ -1136,10 +1374,10 @@ function App() {
             <div className="glass rounded-3xl p-6 md:p-8 neon-glow-cyan">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-neon-cyan flex items-center gap-2">
-                  <span>📅</span> Aylık Detay Breakdown
+                  <span>📅</span> {translate('tableTitle')}
                 </h2>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400">Tablo para birimi:</span>
+                  <span className="text-xs text-gray-400">{translate('tableCurrencyLabel')}</span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setTableCurrency('TRY')}
@@ -1172,50 +1410,50 @@ function App() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-neon-cyan">{row.month} {calcYear}</p>
+                        <p className="text-sm font-semibold text-neon-cyan">{displayMonthName(row.month)} {calcYear}</p>
                         <p className="text-[11px] text-gray-400 flex items-center gap-2">
-                          <span className="text-cyan-300 font-semibold">Kur:</span>
+                          <span className="text-cyan-300 font-semibold">{translate('rateLabel')}:</span>
                           {renderRateCell(row, 'text-white')}
                         </p>
-                        <p className="text-[11px] text-gray-500">Kaynak: {row.source || '—'}</p>
+                        <p className="text-[11px] text-gray-500">{translate('sourceLabel')}: {row.source || '—'}</p>
                       </div>
                       <div className="px-3 py-2 rounded-xl bg-slate-800/70 border border-gray-700 text-[11px] text-right">
                         <div className="font-semibold text-white">{row.bracket.name}</div>
                         <div className="text-gray-400">%{row.bracket.rate}</div>
-                        <div className="text-[10px] text-gray-500 leading-snug">{row.bracket.range}</div>
+                        <div className="text-[10px] text-gray-500 leading-snug">{displayBracketRange(row.bracket.range)}</div>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
-                        <p className="text-gray-400 text-[11px]">Net ({tableCurrency})</p>
+                        <p className="text-gray-400 text-[11px]">{translate('colNet', { currency: tableCurrency })}</p>
                         <p className="text-sm font-semibold text-white break-words">{displayByTableCurrency(row.netTry, row.netEur)}</p>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
-                        <p className="text-orange-300 text-[11px]">Bağkur ({tableCurrency})</p>
+                        <p className="text-orange-300 text-[11px]">{translate('colBagkur', { currency: tableCurrency })}</p>
                         <p className="text-sm font-semibold text-orange-200 break-words">{displayByTableCurrency(row.bagkurTry, row.bagkurEur)}</p>
-                        <p className="text-[10px] text-gray-500">Oran: %{formatNumber((row.bagkurRateApplied || bagkurRate) * 100, 2)}</p>
+                        <p className="text-[10px] text-gray-500">{translate('cardBracketRate')}: %{formatNumber((row.bagkurRateApplied || bagkurRate) * 100, 2)}</p>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
-                        <p className="text-red-300 text-[11px]">Gelir Vergisi ({tableCurrency})</p>
+                        <p className="text-red-300 text-[11px]">{translate('colIncomeTax', { currency: tableCurrency })}</p>
                         <p className="text-sm font-semibold text-red-200 break-words">{displayByTableCurrency(row.taxTry, row.taxEur)}</p>
-                        <p className="text-[10px] text-gray-500">Matrah: {formatCurrency(row.taxableTry, 'TRY')}</p>
+                        <p className="text-[10px] text-gray-500">{translate('incomeTaxMonthlyBase')}: {formatCurrency(row.taxableTry, 'TRY')}</p>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
-                        <p className="text-green-300 text-[11px]">Muhasebe ({MUHASEBE_AYLIK} EUR)</p>
+                        <p className="text-green-300 text-[11px]">{translate('colAccounting', { fee: MUHASEBE_AYLIK })}</p>
                         <p className="text-sm font-semibold text-green-200 break-words">{displayByTableCurrency(row.muhasebeTry, row.muhasebeEur)}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
-                        <p className="text-yellow-300 text-[11px]">Brüt Fatura (KDV Hariç)</p>
+                        <p className="text-yellow-300 text-[11px]">{translate('colGrossExcl', { currency: tableCurrency })}</p>
                         <p className="text-sm font-semibold text-yellow-200 break-words">{displayByTableCurrency(row.brutBeforeVATTry, row.brutBeforeVATEur)}</p>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-800/60 border border-gray-800">
-                        <p className="text-blue-300 text-[11px]">KDV %20</p>
+                        <p className="text-blue-300 text-[11px]">{translate('colVat', { currency: tableCurrency })}</p>
                         <p className="text-sm font-semibold text-blue-200 break-words">{displayByTableCurrency(row.kdvTry, row.kdvEur)}</p>
-                        <p className="text-[10px] text-gray-500">Dahil toplam: {displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</p>
+                        <p className="text-[10px] text-gray-500">{translate('rateInfoPrefix')} {displayByTableCurrency(row.totalWithVATTry, row.totalWithVATEur)}</p>
                       </div>
                     </div>
                   </div>
@@ -1228,16 +1466,16 @@ function App() {
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b border-gray-700">
-                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">Ay</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-cyan-300">Kur</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">Vergi Dilimi</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">Net ({tableCurrency})</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-orange-300">Bağkur Prim ({tableCurrency})</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-red-300">Gelir Vergisi ({tableCurrency})</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-green-300">{`Muhasebe (${MUHASEBE_AYLIK} EUR)`}</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-yellow-300">Brüt Fatura KDV Hariç ({tableCurrency})</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-blue-300">KDV %20 ({tableCurrency})</th>
-                        <th className="py-3 px-2 text-xs font-semibold text-purple-300">Toplam Fatura KDV Dahil ({tableCurrency})</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">{translate('colMonth')}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-cyan-300">{translate('colRate')}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">{translate('colTaxBracket')}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-gray-300">{translate('colNet', { currency: tableCurrency })}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-orange-300">{translate('colBagkur', { currency: tableCurrency })}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-red-300">{translate('colIncomeTax', { currency: tableCurrency })}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-green-300">{translate('colAccounting', { fee: MUHASEBE_AYLIK })}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-yellow-300">{translate('colGrossExcl', { currency: tableCurrency })}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-blue-300">{translate('colVat', { currency: tableCurrency })}</th>
+                        <th className="py-3 px-2 text-xs font-semibold text-purple-300">{translate('colTotal', { currency: tableCurrency })}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1246,13 +1484,13 @@ function App() {
                           key={index}
                           className="border-b border-gray-800 hover:bg-slate-800/30 transition-colors"
                         >
-                          <td className="py-2 px-2 font-medium text-neon-cyan">{row.month}</td>
+                          <td className="py-2 px-2 font-medium text-neon-cyan">{displayMonthName(row.month)}</td>
                           <td className="py-2 px-2 text-cyan-300 text-xs">
                             {renderRateCell(row)}
                           </td>
                           <td className="py-2 px-2 text-xs text-gray-300">
-                            <span className="block font-semibold text-white">{`${row.bracket.name} (%${row.bracket.rate})`}</span>
-                            <span className="text-[10px] text-gray-500">{row.bracket.range}</span>
+                            <span className="block font-semibold text-white">{`${displayBracketName(row.bracket.name)} (%${row.bracket.rate})`}</span>
+                            <span className="text-[10px] text-gray-500">{displayBracketRange(row.bracket.range)}</span>
                           </td>
                           <td className="py-2 px-2">{displayByTableCurrency(row.netTry, row.netEur)}</td>
                           <td className="py-2 px-2 text-orange-300">{displayByTableCurrency(row.bagkurTry, row.bagkurEur)}</td>
@@ -1267,10 +1505,10 @@ function App() {
                     {/* Toplam satırı */}
                     <tfoot>
                       <tr className="border-t-2 border-neon-cyan">
-                        <td className="py-3 px-2 font-bold text-sm text-neon-cyan">TOPLAM</td>
+                        <td className="py-3 px-2 font-bold text-sm text-neon-cyan">{lang === 'en' ? 'TOTAL' : 'TOPLAM'}</td>
                         <td className="py-3 px-2 font-bold text-sm">-</td>
                         <td className="py-3 px-2 font-bold text-sm text-white">
-                          {`${getTaxBracket(results.taxBase).name} (%${getTaxBracket(results.taxBase).rate})`}
+                          {`${displayBracketName(getTaxBracket(results.taxBase).name)} (%${getTaxBracket(results.taxBase).rate})`}
                         </td>
                         <td className="py-3 px-2 font-bold text-sm">{displayByTableCurrency(results.yearlyNetTry, results.yearlyNetEur)}</td>
                         <td className="py-3 px-2 font-bold text-sm text-orange-300">{displayByTableCurrency(results.yearlyBagkur, results.yearlyBagkurEur)}</td>
@@ -1288,22 +1526,22 @@ function App() {
               {/* Bilgilendirme notu */}
               <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
                 <p className="text-sm text-yellow-300">
-                  📄 <strong>Brüt Fatura:</strong> KDV hariç kesilecek tutardır; net + Bağkur + muhasebe giderleri + ilgili ay gelir vergisini içerir. KDV %20 ayrıca eklenir.
+                  {translate('noteGrossInvoice')}
                 </p>
                 <p className="text-sm text-blue-300 mt-2">
-                  💡 <strong>Kümülatif:</strong> İlgili aya kadar biriken toplam (Net gelir + Bağkur + Muhasebe ücretleri).
+                  {translate('noteCumulative')}
                 </p>
                 <p className="text-xs text-blue-300 mt-1">
-                  Örnek: Mart ayı = (Ocak net + Bağkur + Muhasebe) + (Şubat net + Bağkur + Muhasebe) + (Mart net + Bağkur + Muhasebe)
+                  {translate('noteCumulativeExample')}
                 </p>
                 <p className="text-xs text-orange-200 mt-2">
-                  🛡️ <strong>Bağkur indirimi:</strong> Kuruluş yılındaki ilk ay %37,75; sonraki aylarda şartları sağlarsanız %32 uygulanabilir (başvuru gerekmez).
+                  {translate('noteBagkurDiscount')}
                 </p>
                 <p className="text-xs text-cyan-300 mt-2">
-                  🌍 <strong>Kur:</strong> Her ayın 20'si kuru kullanılır. Bulunduğumuz ay 20'sine gelmediyse manuel kur girişi yapabilirsiniz.
+                  {translate('noteRateInfo')}
                 </p>
                 <p className="text-xs text-orange-300 mt-2">
-                  ⚠️ <strong>Önemli:</strong> Gelir vergisi, fatura KDV hariç tutarın tamamının kümülatifi üzerinden hesaplanır. Bağkur primi vergi matrahından düşülmez.
+                  {translate('noteImportant')}
                 </p>
               </div>
             </div>
@@ -1313,13 +1551,13 @@ function App() {
         {/* Footer Bilgilendirme */}
         <footer className="mt-12 text-center text-sm text-gray-400 space-y-2">
           <p>
-            ⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve seçtiğiniz Bağkur prim oranına (%{formatNumber(bagkurRate * 100, 2)}, aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) göre yapılmıştır.
+            {translate('footerLine1', { rate: formatNumber(bagkurRate * 100, 2), cap: formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2) })}
           </p>
           <p>
-            Matrah: fatura KDV hariç tutarın tamamı (Bağkur primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.
+            {translate('footerLine2')}
           </p>
           <p className="text-xs text-gray-500">
-            Döviz kuru: TCMB (T.C. Merkez Bankası) | Doğukan Elbasan
+            {translate('footerLine3')}
           </p>
         </footer>
 
