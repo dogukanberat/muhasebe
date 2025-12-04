@@ -21,20 +21,22 @@ const calculateTax = (yearlyIncome) => {
 };
 
 // Para birimi formatlama
-const formatCurrency = (amount, currency = 'TRY', decimals = 2) => {
+const formatCurrency = (amount, currency = 'TRY', decimals = 2, maxDecimals = decimals) => {
+  const maximumFractionDigits = Math.max(decimals, maxDecimals);
   return new Intl.NumberFormat('tr-TR', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
+    maximumFractionDigits: maximumFractionDigits
   }).format(amount);
 };
 
 // Sayı formatlama (binlik ayırıcıyla)
-const formatNumber = (num, decimals = 2) => {
+const formatNumber = (num, decimals = 2, maxDecimals = decimals) => {
+  const maximumFractionDigits = Math.max(decimals, maxDecimals);
   return new Intl.NumberFormat('tr-TR', {
     minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
+    maximumFractionDigits: maximumFractionDigits
   }).format(num);
 };
 
@@ -397,18 +399,20 @@ function App() {
 
       for (let i = 0; i < 60; i++) {
         const mid = (low + high) / 2;
-        const midTaxable = mid - otherExpenses;
+        // Gelir vergisi matrahı: fatura KDV hariç tutarın tamamı (muhasebe düşülmez)
+        const midTaxable = mid;
         const midCumMatrah = cumulativeMatrah + midTaxable;
         const midCumTax = calculateTax(midCumMatrah);
         const midIncomeTax = midCumTax - cumulativeTax;
 
-        // SGK = (Net + Muhasebe) × 37.75%
+        // SGK = Net × 37.75%
         // Invoice = Net + SGK + Muhasebe + Tax
-        // Invoice = Net + (Net + Muhasebe) × 0.3775 + Muhasebe + Tax
-        // Invoice - Tax = (Net + Muhasebe) × 1.3775
-        // Net = (Invoice - Tax - Muhasebe × 1.3775) / 1.3775
-        const midNet = (mid - midIncomeTax - otherExpenses * 1.3775) / 1.3775;
-        const midBagkur = Math.min((midNet + otherExpenses) * BAGKUR_RATE, BAGKUR_CAP_TRY);
+        // Invoice = Net × 1.3775 + Muhasebe + Tax
+        // Net (tavan dikkate alınmadan) = (Invoice - Tax - Muhasebe) / 1.3775
+        const midNetUncapped = (mid - midIncomeTax - otherExpenses) / (1 + BAGKUR_RATE);
+        const midBagkurUncapped = midNetUncapped * BAGKUR_RATE;
+        const midBagkur = Math.min(midBagkurUncapped, BAGKUR_CAP_TRY);
+        const midNet = mid - midIncomeTax - midBagkur - otherExpenses;
 
         if (midNet > targetNetTry) {
           high = mid;
@@ -701,6 +705,16 @@ function App() {
 
                     <div className="text-2xl font-bold text-gray-400">+</div>
 
+                    {/* Muhasebe */}
+                    <div className="glass p-4 rounded-xl text-center min-w-[120px]">
+                      <p className="text-xs text-blue-400 mb-1">Muhasebe</p>
+                      <p className="text-lg font-bold text-blue-400">
+                        {formatCurrency(monthDataToShow.muhasebeEur, 'EUR')}
+                      </p>
+                    </div>
+
+                    <div className="text-2xl font-bold text-gray-400">+</div>
+
                     {/* Gelir Vergisi */}
                     <div className="relative group">
                       <div className="glass p-4 rounded-xl text-center min-w-[120px] cursor-help">
@@ -714,7 +728,7 @@ function App() {
                       <div className="absolute invisible group-hover:visible bg-slate-800/95 backdrop-blur-sm text-white text-xs rounded-lg p-4 shadow-xl z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-72 border border-red-400/30">
                         <div className="font-bold text-red-400 mb-2">📊 Gelir Vergisi Hesaplaması</div>
                         <p className="mb-3 text-gray-300">
-                          Kümülatif matrah (fatura KDV hariç - muhasebe) üzerinden <span className="font-semibold text-white">2025 Ücret Dışı Gelirler Tarifesi</span> ile hesaplanır.
+                          Kümülatif matrah (fatura KDV hariç tutarın tamamı) üzerinden <span className="font-semibold text-white">2025 Ücret Dışı Gelirler Tarifesi</span> ile hesaplanır.
                         </p>
                         <div className="text-[11px] space-y-1.5 bg-slate-700/50 p-2 rounded">
                           <div className="flex justify-between">
@@ -772,16 +786,6 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="text-2xl font-bold text-gray-400">+</div>
-
-                    {/* Muhasebe */}
-                    <div className="glass p-4 rounded-xl text-center min-w-[120px]">
-                      <p className="text-xs text-blue-400 mb-1">Muhasebe</p>
-                      <p className="text-lg font-bold text-blue-400">
-                        {formatCurrency(monthDataToShow.muhasebeEur, 'EUR')}
-                      </p>
-                    </div>
-
                     <div className="text-2xl font-bold text-neon-cyan">=</div>
 
                     {/* KDV Hariç Tutar */}
@@ -805,12 +809,12 @@ function App() {
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.bagkurEur, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-400">Gelir Vergisi</span>
-                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.taxEur || 0, 'EUR')}</span>
-                          </div>
-                          <div className="flex justify-between">
                             <span className="text-gray-400">Muhasebe</span>
                             <span className="font-semibold text-white">{formatCurrency(monthDataToShow.muhasebeEur, 'EUR')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Gelir Vergisi</span>
+                            <span className="font-semibold text-white">{formatCurrency(monthDataToShow.taxEur || 0, 'EUR')}</span>
                           </div>
                           <div className="flex justify-between font-semibold text-neon-cyan pt-1 border-t border-neon-cyan/30">
                             <span>Toplam (EUR)</span>
@@ -999,7 +1003,7 @@ function App() {
                   🌍 <strong>Kur:</strong> Her ayın 20'si kuru kullanılır. Bulunduğumuz ay 20'sine gelmediyse manuel kur girişi yapabilirsiniz.
                 </p>
                 <p className="text-xs text-orange-300 mt-2">
-                  ⚠️ <strong>Önemli:</strong> Gelir vergisi, fatura KDV hariç tutardan sadece muhasebe giderleri düşülerek oluşan kümülatif matrah üzerinden hesaplanır. SGK primi vergi matrahından düşülmez.
+                  ⚠️ <strong>Önemli:</strong> Gelir vergisi, fatura KDV hariç tutarın tamamının kümülatifi üzerinden hesaplanır. SGK primi vergi matrahından düşülmez.
                 </p>
               </div>
             </div>
@@ -1012,7 +1016,7 @@ function App() {
             ⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve Bağkur prim oranına (%37,75, aylık tavan {formatCurrency(BAGKUR_CAP_TRY, 'TRY', 2)}) göre yapılmıştır.
           </p>
           <p>
-            Matrah: fatura KDV hariç - muhasebe giderleri (SGK primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.
+            Matrah: fatura KDV hariç tutarın tamamı (SGK primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.
           </p>
           <p className="text-xs text-gray-500">
             Döviz kuru: TCMB (T.C. Merkez Bankası) | Tasarım: Futuristik Glassmorphism UI
