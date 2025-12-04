@@ -168,6 +168,10 @@ const translations = {
     footerLine1: '⚠️ Bu hesaplama, 2025 yılı "Ücret Dışındaki Gelirler İçin Gelir Vergisi Tarifesi" ve seçtiğiniz Bağkur prim oranına (%{rate}, aylık tavan {cap}) göre yapılmıştır.',
     footerLine2: 'Matrah: fatura KDV hariç tutarın tamamı (Bağkur primi matrahtan düşülmez). Gerçek durumunuz için mutlaka mali müşavirinize danışın.',
     footerLine3: 'Döviz kuru: TCMB (T.C. Merkez Bankası) | Doğukan Elbasan',
+    verifyButtonLabel: 'Fatura KDV Hariç',
+    verifyTooltip: 'Tutar kopyalanır ve GİB gelir vergisi hesaplama sayfası yeni sekmede açılır. Kopyaladığınız tutarı oraya girerek teyit edebilirsiniz.',
+    verifyTooltipExtra: 'GİB hesaplamasında sonucu gördükten sonra “Gelir Vergisi Primi” kalemini oradan alabilirsiniz.',
+    verifyTooltipIncomeType: 'GİB sayfasında “Gelir Unsuru” alanını mutlaka ÜCRET DIŞI olarak seçin.',
   },
   en: {
     vatToggleOn: 'Include VAT',
@@ -255,6 +259,10 @@ const translations = {
     footerLine1: '⚠️ This calculation uses the 2025 non-wage income tax tariff and your selected Bagkur rate (%{rate}, monthly cap {cap}).',
     footerLine2: 'Tax base: full invoice amount excluding VAT (Bagkur premium is not deducted). Consult your accountant for your exact situation.',
     footerLine3: 'Exchange rate: CBRT (Central Bank of Türkiye) | Doğukan Elbasan',
+    verifyButtonLabel: 'Invoice excl. VAT',
+    verifyTooltip: 'Copies the amount and opens the GIB income tax calculator in a new tab. Paste the amount there to cross-check.',
+    verifyTooltipExtra: 'After calculating on GIB, you can pull the “Income Tax Premium” value from their result.',
+    verifyTooltipIncomeType: 'On the GIB page, set “Gelir Unsuru” (Income Type) to ÜCRET DIŞI (Non-wage).',
   },
 };
 
@@ -351,6 +359,7 @@ function App() {
   const autoCalcRequested = React.useRef(false);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [includeVat, setIncludeVat] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
 
   const translate = (key, vars = {}) => {
     const template = translations[lang]?.[key] ?? translations.tr[key] ?? key;
@@ -368,6 +377,7 @@ function App() {
   // KDV oranı
   const BASE_KDV_RATE = 0.20; // %20
   const VAT_RATE_TEXT = `${(BASE_KDV_RATE * 100).toFixed(0)}%`;
+  const GIB_VERIFY_URL = 'https://dijital.gib.gov.tr/hesaplamalar/GelirVergisiHesaplama';
 
   const getMonthLabel = (idx) => MONTH_LABELS[lang]?.[idx] ?? MONTH_LABELS.tr[idx] ?? '';
   const displayMonthName = (name) => (lang === 'en' ? (MONTH_NAME_MAP[name] || name) : name);
@@ -378,6 +388,16 @@ function App() {
 
   // Sabit muhasebe ücreti
   const MUHASEBE_AYLIK = 45; // EUR
+
+  const handleVerifyClick = (amountTry) => {
+    const plain = Number.isFinite(amountTry)
+      ? amountTry.toFixed(2).replace('.', ',') // TR format without thousand separator
+      : String(amountTry || '');
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(plain).catch(() => {});
+    }
+    window.open(GIB_VERIFY_URL, '_blank', 'noopener,noreferrer');
+  };
 
   // Backend API URL
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -1430,7 +1450,7 @@ function App() {
             })()}
 
             {/* Aylık Detay Tablosu */}
-            <div className="glass rounded-3xl p-6 md:p-8 neon-glow-cyan">
+            <div className="glass rounded-3xl p-6 md:p-8 neon-glow-cyan relative overflow-visible">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-neon-cyan flex items-center gap-2">
                   <span>📅</span> {translate('tableTitle')}
@@ -1523,7 +1543,7 @@ function App() {
 
               {/* Masaüstü tablo */}
               <div className="hidden md:block">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-visible">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="border-b border-gray-700">
@@ -1573,7 +1593,7 @@ function App() {
                     </tbody>
                     {/* Toplam satırı */}
                     <tfoot>
-                      <tr className="border-t-2 border-neon-cyan">
+                      <tr className="border-t-2 border-neon-cyan group">
                         <td className="py-3 px-2 font-bold text-sm text-neon-cyan">{lang === 'en' ? 'TOTAL' : 'TOPLAM'}</td>
                         <td className="py-3 px-2 font-bold text-sm">-</td>
                         <td className="py-3 px-2 font-bold text-sm text-white">
@@ -1581,9 +1601,51 @@ function App() {
                         </td>
                         <td className="py-3 px-2 font-bold text-sm">{displayByTableCurrency(results.yearlyNetTry, results.yearlyNetEur)}</td>
                         <td className="py-3 px-2 font-bold text-sm text-orange-300">{displayByTableCurrency(results.yearlyBagkur, results.yearlyBagkurEur)}</td>
-                        <td className="py-3 px-2 font-bold text-sm text-red-300">{displayByTableCurrency(results.yearlyTax, results.yearlyTaxEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-red-300 relative">
+                          <span className="relative z-10 inline-block px-2 py-1 rounded-md bg-slate-900/80">
+                            {displayByTableCurrency(results.yearlyTax, results.yearlyTaxEur)}
+                          </span>
+                          <span
+                            className={`absolute inset-0 rounded-lg pointer-events-none transition-opacity duration-150 ${
+                              verifyOpen
+                                ? 'opacity-100 bg-red-500/35 shadow-[0_0_0_2px_rgba(239,68,68,0.7),0_0_20px_rgba(239,68,68,0.7)]'
+                                : 'opacity-0'
+                            }`}
+                          ></span>
+                          <span
+                            className={`absolute inset-0 rounded-lg pointer-events-none ${
+                              verifyOpen ? 'animate-ping bg-red-400/30' : 'hidden'
+                            }`}
+                          ></span>
+                        </td>
                         <td className="py-3 px-2 font-bold text-sm text-green-300">{displayByTableCurrency(results.yearlyMuhasebeTry, results.yearlyMuhasebeEur)}</td>
-                        <td className="py-3 px-2 font-bold text-sm text-yellow-300">{displayByTableCurrency(results.brutInvoiceBeforeVAT, results.brutInvoiceBeforeVATEur)}</td>
+                        <td className="py-3 px-2 font-bold text-sm text-yellow-300">
+                          <div
+                            className="relative inline-block z-30"
+                            onMouseEnter={() => setVerifyOpen(true)}
+                            onMouseLeave={() => setVerifyOpen(false)}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleVerifyClick(results.brutInvoiceBeforeVAT)}
+                              className="w-full text-left px-3 py-2 rounded-lg bg-slate-800/70 border border-yellow-400/40 hover:border-yellow-300 hover:text-yellow-200 transition-colors"
+                            >
+                              {translate('verifyButtonLabel')}: {displayByTableCurrency(results.brutInvoiceBeforeVAT, results.brutInvoiceBeforeVATEur)}
+                            </button>
+                            {verifyOpen && (
+                              <div className="absolute z-50 bg-slate-900/95 border border-yellow-400/30 rounded-lg p-3 text-[11px] text-gray-200 shadow-xl w-64 right-0 bottom-full mb-2">
+                                <div className="font-semibold text-yellow-200 mb-1">
+                                  {lang === 'en' ? 'Click copies amount & opens GIB' : 'Tıkla: tutar kopyalanır & GİB açılır'}
+                                </div>
+                                <div className="text-gray-200 mb-2">{translate('verifyTooltip')}</div>
+                                <div className="text-gray-300 mb-1">{translate('verifyTooltipExtra')}</div>
+                                <div className="text-red-400 font-extrabold">
+                                  {translate('verifyTooltipIncomeType')}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </td>
                         {includeVat && (
                           <>
                             <td className="py-3 px-2 font-bold text-sm text-blue-300">{displayByTableCurrency(results.yearlyKdv, results.yearlyKdvEur)}</td>
