@@ -357,6 +357,14 @@ function App() {
     return template.replace(/\{(\w+)\}/g, (_, v) => (vars?.[v] !== undefined ? vars[v] : `{${v}}`));
   };
 
+  const detectBrowserLang = () => {
+    if (typeof navigator === 'undefined' || !navigator.language) return 'en';
+    const navLang = navigator.language.toLowerCase();
+    if (navLang.startsWith('tr')) return 'tr';
+    if (navLang.startsWith('en')) return 'en';
+    return 'en';
+  };
+
   // KDV oranı
   const BASE_KDV_RATE = 0.20; // %20
   const VAT_RATE_TEXT = `${(BASE_KDV_RATE * 100).toFixed(0)}%`;
@@ -422,16 +430,20 @@ function App() {
       }
       if (!isPrefMismatch && (storedLang === 'en' || storedLang === 'tr')) {
         setLang(storedLang);
+      } else if (!storedLang) {
+        const browserLang = detectBrowserLang();
+        setLang(browserLang);
       }
       if (!isPrefMismatch && storedIncludeVat !== null) {
         setIncludeVat(storedIncludeVat === '1');
       }
       if (isPrefMismatch) {
         window.localStorage.setItem(LS_KEY_PREF_VERSION, PREF_VERSION);
-        window.localStorage.setItem(LS_KEY_LANG, 'en');
+        const browserLang = detectBrowserLang();
+        window.localStorage.setItem(LS_KEY_LANG, browserLang);
         window.localStorage.setItem(LS_KEY_TABLE_CURRENCY, 'EUR');
         window.localStorage.setItem(LS_KEY_INCLUDE_VAT, '0');
-        setLang('en');
+        setLang(browserLang);
         setTableCurrency('EUR');
         setIncludeVat(false);
       }
